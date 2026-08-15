@@ -2363,9 +2363,11 @@ function ArticleDetailPage({ article, onNavigate }) {
 
 
 function AdminPage() {
-const [loggedIn, setLoggedIn] = useState(false);
-const [authLoading, setAuthLoading] = useState(true);
-const [authError, setAuthError] = useState('');  const [section, setSection] = useState('dashboard');
+  const [loggedIn, setLoggedIn] = useState(false);
+  const [authLoading, setAuthLoading] = useState(true);
+  const [authSubmitting, setAuthSubmitting] = useState(false);
+  const [authError, setAuthError] = useState('');
+  const [section, setSection] = useState('dashboard');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [caseItems, setCaseItems] = useState(caseStudies.map((item) => ({ ...item, published: true })));
@@ -2373,6 +2375,83 @@ const [authError, setAuthError] = useState('');  const [section, setSection] = u
   const [editor, setEditor] = useState(null);
   const [editorType, setEditorType] = useState(null);
   const [adminNotice, setAdminNotice] = useState('');
+
+  // Comprueba la sesión existente al entrar en /admin y mantiene
+  // el estado sincronizado con Supabase Auth.
+  useEffect(() => {
+    let mounted = true;
+
+    const loadSession = async () => {
+      const { data, error } = await supabase.auth.getSession();
+
+      if (!mounted) return;
+
+      if (error) {
+        setAuthError('No se pudo comprobar la sesión. Inténtalo de nuevo.');
+        setLoggedIn(false);
+      } else {
+        setLoggedIn(Boolean(data?.session));
+      }
+
+      setAuthLoading(false);
+    };
+
+    loadSession();
+
+    const {
+      data: { subscription }
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      if (!mounted) return;
+
+      setLoggedIn(Boolean(session));
+
+      if (event === 'SIGNED_OUT') {
+        setEmail('');
+        setPassword('');
+      }
+    });
+
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
+  }, []);
+
+  const handleLogin = async (e) => {
+    e.preventDefault();
+
+    if (!email.trim() || !password) {
+      setAuthError('Introduce tu correo electrónico y contraseña.');
+      return;
+    }
+
+    setAuthSubmitting(true);
+    setAuthError('');
+
+    const { error } = await supabase.auth.signInWithPassword({
+      email: email.trim(),
+      password
+    });
+
+    if (error) {
+      setAuthError('Correo electrónico o contraseña incorrectos.');
+      setAuthSubmitting(false);
+      return;
+    }
+
+    setPassword('');
+    setAuthSubmitting(false);
+  };
+
+  const handleLogout = async () => {
+    setAuthError('');
+
+    const { error } = await supabase.auth.signOut();
+
+    if (error) {
+      setAuthError('No se pudo cerrar la sesión. Inténtalo de nuevo.');
+    }
+  };
 
   const openEditor = (type, item = null) => {
     setEditorType(type);
@@ -2410,26 +2489,359 @@ const [authError, setAuthError] = useState('');  const [section, setSection] = u
     else setArticleItems((prev) => prev.filter((item) => item.id !== id));
   };
 
-  if (!loggedIn) {
+  if (authLoading) {
     return (
       <div className="admin-app admin-login-shell">
         <div className="admin-login-card">
-          <div className="admin-login-logo-box"><img src={logo} alt="LC Abogados" className="admin-login-logo" style={{ width: 28, height: 28, maxWidth: 28, maxHeight: 28, minWidth: 28, minHeight: 28, objectFit: "contain", display: "block" }} /></div>
+          <div className="admin-login-logo-box">
+            <img
+              src={logo}
+              alt="LC Abogados"
+              className="admin-login-logo"
+              style={{ width: 28, height: 28, maxWidth: 28, maxHeight: 28, minWidth: 28, minHeight: 28, objectFit: "contain", display: "block" }}
+            />
+          </div>
           <span className="admin-eyebrow">Área privada</span>
           <h1>Administración</h1>
-          <p>Gestiona casos, artículos y el contenido de LC Abogados desde un único panel.</p>
-          <form onSubmit={(e) => { e.preventDefault(); setLoggedIn(Boolean(email && password)); }}>
-            <label>Correo electrónico<input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="nombre@lcabogados.com" required /></label>
-            <label>Contraseña<input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" required /></label>
-            <button type="submit" className="admin-primary-btn">Iniciar sesión</button>
-          </form>
-          <button className="admin-demo-btn" onClick={() => setLoggedIn(true)}>Entrar en modo demostración</button>
-          <div className="admin-security-note">Prototipo local: todavía no almacena ni valida credenciales reales. En producción cada usuario tendrá su cuenta independiente mediante autenticación segura.</div>
-          <button className="admin-back-link" onClick={() => { window.history.pushState({}, '', '/'); window.dispatchEvent(new PopStateEvent('popstate')); }}>← Volver a la web</button>
+          <p>Comprobando sesión...</p>
         </div>
       </div>
     );
   }
+
+  if (!loggedIn) {
+    return (
+      <div className="admin-app admin-login-shell">
+        <div className="admin-login-card">
+          <div className="admin-login-logo-box">
+            <img
+              src={logo}
+              alt="LC Abogados"
+              className="admin-login-logo"
+              style={{ width: 28, height: 28, maxWidth: 28, maxHeight: 28, minWidth: 28, minHeight: 28, objectFit: "contain", display: "block" }}
+            />
+          </div>
+
+          <span className="admin-eyebrow">Área privada</span>
+          <h1>Administración</h1>
+          <p>Gestiona casos, artículos y el contenido de LC Abogados desde un único panel.</p>
+
+          <form onSubmit={handleLogin}>
+            <label>
+              Correo electrónico
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => {
+                  setEmail(e.target.value);
+                  if (authError) setAuthError('');
+                }}
+                placeholder="nombre@lcabogados.com"
+                autoComplete="email"
+                required
+                disabled={authSubmitting}
+              />
+            </label>
+
+            <label>
+              Contraseña
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => {
+                  setPassword(e.target.value);
+                  if (authError) setAuthError('');
+                }}
+                placeholder="••••••••"
+                autoComplete="current-password"
+                required
+                disabled={authSubmitting}
+              />
+            </label>
+
+            {authError && (
+              <div
+                role="alert"
+                style={{
+                  marginTop: '10px',
+                  marginBottom: '4px',
+                  padding: '11px 13px',
+                  borderRadius: '8px',
+                  border: '1px solid rgba(185, 28, 28, 0.18)',
+                  background: '#fef2f2',
+                  color: '#b91c1c',
+                  fontSize: '0.78rem',
+                  lineHeight: 1.45
+                }}
+              >
+                {authError}
+              </div>
+            )}
+
+            <button
+              type="submit"
+              className="admin-primary-btn"
+              disabled={authSubmitting}
+              style={{ opacity: authSubmitting ? 0.7 : 1 }}
+            >
+              {authSubmitting ? 'Iniciando sesión...' : 'Iniciar sesión'}
+            </button>
+          </form>
+
+          <div className="admin-security-note">
+            Acceso protegido mediante Supabase Auth. Cada administrador utiliza su propia cuenta y contraseña.
+          </div>
+
+          <button
+            className="admin-back-link"
+            onClick={() => {
+              window.history.pushState({}, '', '/');
+              window.dispatchEvent(new PopStateEvent('popstate'));
+            }}
+          >
+            ← Volver a la web
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  const menu = [
+    ['dashboard', 'Dashboard'], ['cases', 'Casos'], ['articles', 'Artículos'], ['contacts', 'Consultas'], ['settings', 'Configuración']
+  ];
+
+  return (
+    <div className="admin-app">
+      <aside className="admin-sidebar">
+        <div className="admin-brand">
+          <div className="admin-brand-logo-box">
+            <img
+              src={logo}
+              alt="LC Abogados"
+              style={{ width: 22, height: 22, maxWidth: 22, maxHeight: 22, minWidth: 22, minHeight: 22, objectFit: "contain", display: "block" }}
+            />
+          </div>
+          <div>
+            <strong>LC ABOGADOS</strong>
+            <span>Administración</span>
+          </div>
+        </div>
+
+        <nav>
+          {menu.map(([key, label]) => (
+            <button
+              key={key}
+              className={section === key ? 'active' : ''}
+              onClick={() => setSection(key)}
+            >
+              {label}
+            </button>
+          ))}
+        </nav>
+
+        <div className="admin-sidebar-user">
+          <span className="admin-avatar">A</span>
+          <div>
+            <strong>Administrador</strong>
+            <small>Acceso total</small>
+          </div>
+          <button title="Cerrar sesión" onClick={handleLogout}>↪</button>
+        </div>
+      </aside>
+
+      <main className="admin-main">
+        <header className="admin-topbar">
+          <div>
+            <span className="admin-eyebrow">LC Abogados</span>
+            <h2>{menu.find(([key]) => key === section)?.[1]}</h2>
+          </div>
+          <a
+            href="/"
+            onClick={(e) => {
+              e.preventDefault();
+              window.history.pushState({}, '', '/');
+              window.dispatchEvent(new PopStateEvent('popstate'));
+            }}
+          >
+            Ver sitio ↗
+          </a>
+        </header>
+
+        {adminNotice && (
+          <div className="admin-notice">
+            {adminNotice}
+            <button onClick={() => setAdminNotice('')}>×</button>
+          </div>
+        )}
+
+        {section === 'dashboard' && <div className="admin-dashboard-content">
+          <div className="admin-stats">
+            <div><span>Casos</span><strong>{caseItems.length}</strong><small>Gestionables</small></div>
+            <div><span>Artículos</span><strong>{articleItems.length}</strong><small>Gestionables</small></div>
+            <div><span>Publicados</span><strong>{caseItems.filter(x=>x.published).length + articleItems.filter(x=>x.published).length}</strong><small>Visibles en web</small></div>
+            <div><span>Consultas</span><strong>—</strong><small>Pendientes de conectar</small></div>
+          </div>
+
+          <div className="admin-grid-two">
+            <section className="admin-panel">
+              <div className="admin-panel-head">
+                <div><span className="admin-eyebrow">Contenido</span><h3>Últimos movimientos</h3></div>
+              </div>
+              <div className="admin-activity">
+                <div><span>Casos</span><strong>{caseItems[0]?.title}</strong><small>Disponible para editar</small></div>
+                <div><span>Artículos</span><strong>{articleItems[0]?.title}</strong><small>Disponible para editar</small></div>
+              </div>
+            </section>
+
+            <section className="admin-panel">
+              <div className="admin-panel-head">
+                <div><span className="admin-eyebrow">Acciones</span><h3>Acceso rápido</h3></div>
+              </div>
+              <div className="admin-quick">
+                <button onClick={() => { setSection('cases'); openEditor('case'); }}>+ Nuevo caso</button>
+                <button onClick={() => { setSection('articles'); openEditor('article'); }}>+ Nuevo artículo</button>
+                <button onClick={() => setSection('contacts')}>Ver consultas</button>
+              </div>
+            </section>
+          </div>
+        </div>}
+
+        {section === 'cases' && <section className="admin-panel admin-list-panel">
+          <div className="admin-panel-head">
+            <div><span className="admin-eyebrow">Contenido</span><h3>Casos de estudio</h3></div>
+            <button className="admin-primary-btn compact" onClick={() => openEditor('case')}>+ Añadir caso</button>
+          </div>
+          <div className="admin-table-wrap">
+            <table>
+              <thead><tr><th>Caso</th><th>Área</th><th>Fecha</th><th>Estado</th><th></th></tr></thead>
+              <tbody>
+                {caseItems.map(item => (
+                  <tr key={item.id}>
+                    <td><strong>{item.title || 'Sin título'}</strong><small>{item.summary}</small></td>
+                    <td>{item.area}</td>
+                    <td>{item.displayDate || item.date}</td>
+                    <td><span className={`admin-status ${item.published ? 'published' : 'draft'}`}>{item.published ? 'Publicado' : 'Borrador'}</span></td>
+                    <td className="admin-actions">
+                      <button onClick={() => openEditor('case', item)}>Editar</button>
+                      <button onClick={() => deleteItem('case', item.id)}>Eliminar</button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>}
+
+        {section === 'articles' && <section className="admin-panel admin-list-panel">
+          <div className="admin-panel-head">
+            <div><span className="admin-eyebrow">Contenido</span><h3>Artículos</h3></div>
+            <button className="admin-primary-btn compact" onClick={() => openEditor('article')}>+ Añadir artículo</button>
+          </div>
+          <div className="admin-table-wrap">
+            <table>
+              <thead><tr><th>Artículo</th><th>Área</th><th>Autor</th><th>Estado</th><th></th></tr></thead>
+              <tbody>
+                {articleItems.map(item => (
+                  <tr key={item.id}>
+                    <td><strong>{item.title || 'Sin título'}</strong><small>{item.snippet}</small></td>
+                    <td>{item.area}</td>
+                    <td>{item.author}</td>
+                    <td><span className={`admin-status ${item.published ? 'published' : 'draft'}`}>{item.published ? 'Publicado' : 'Borrador'}</span></td>
+                    <td className="admin-actions">
+                      <button onClick={() => openEditor('article', item)}>Editar</button>
+                      <button onClick={() => deleteItem('article', item.id)}>Eliminar</button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>}
+
+        {section === 'contacts' && <section className="admin-panel">
+          <div className="admin-panel-head">
+            <div><span className="admin-eyebrow">Entrada</span><h3>Consultas</h3></div>
+          </div>
+          <div className="admin-empty">
+            <strong>Conexión pendiente</strong>
+            <p>La interfaz ya está preparada para mostrar las consultas recibidas desde Contacto. En la siguiente fase conectaremos el formulario a la base de datos y al correo de la firma.</p>
+            <button className="admin-secondary-btn" onClick={() => setSection('settings')}>Ver arquitectura</button>
+          </div>
+        </section>}
+
+        {section === 'settings' && <section className="admin-panel">
+          <div className="admin-panel-head">
+            <div><span className="admin-eyebrow">Control</span><h3>Configuración y usuarios</h3></div>
+          </div>
+          <div className="admin-user-grid">
+            <article><span className="admin-role">SUPER ADMIN</span><h4>Administrador principal</h4><p>Acceso completo a contenido, consultas, usuarios y configuración.</p><small>Cuenta individual recomendada para la persona que gestiona la web.</small></article>
+            <article><span className="admin-role editor">EDITOR</span><h4>Abogado 1</h4><p>Puede crear, editar y publicar casos y artículos y revisar consultas.</p><small>Cuenta individual. No comparte contraseña.</small></article>
+            <article><span className="admin-role editor">EDITOR</span><h4>Abogado 2</h4><p>Puede crear, editar y publicar casos y artículos y revisar consultas.</p><small>Cuenta individual. No comparte contraseña.</small></article>
+          </div>
+          <div className="admin-security-note wide">En producción, cada persona tendrá su propio correo y contraseña mediante Supabase Auth. No se deben guardar contraseñas dentro de App.jsx ni compartir una contraseña entre los tres administradores.</div>
+        </section>}
+
+        {editor && <div className="admin-modal-backdrop" onMouseDown={(e) => e.target === e.currentTarget && closeEditor()}>
+          <div className="admin-modal">
+            <div className="admin-modal-head">
+              <div>
+                <span className="admin-eyebrow">Editor</span>
+                <h3>{editorType === 'case' ? (editor.title ? 'Editar caso' : 'Nuevo caso') : (editor.title ? 'Editar artículo' : 'Nuevo artículo')}</h3>
+              </div>
+              <button onClick={closeEditor}>×</button>
+            </div>
+
+            <div className="admin-form-grid">
+              <label>Título<input value={editor.title || ''} onChange={e => setEditor({...editor, title:e.target.value})}/></label>
+              <label>Área<select value={editor.area || ''} onChange={e => setEditor({...editor, area:e.target.value})}><option>Derecho Civil</option><option>Derecho Laboral</option><option>Derecho Penal</option><option>Derecho Comercial</option><option>Derecho Administrativo</option></select></label>
+
+              {editorType === 'case'
+                ? <>
+                    <label>Categoría<input value={editor.category || ''} onChange={e => setEditor({...editor, category:e.target.value})}/></label>
+                    <label>Fecha<input type="date" value={editor.date || ''} onChange={e => setEditor({...editor, date:e.target.value})}/></label>
+                    <label className="wide">Resumen<textarea value={editor.summary || ''} onChange={e => setEditor({...editor, summary:e.target.value})}/></label>
+                    <label className="wide">Contexto<textarea value={editor.context || ''} onChange={e => setEditor({...editor, context:e.target.value})}/></label>
+                    <label className="wide">Estrategia<textarea value={editor.strategy || ''} onChange={e => setEditor({...editor, strategy:e.target.value})}/></label>
+                    <label className="wide">Resultado<textarea value={editor.result || ''} onChange={e => setEditor({...editor, result:e.target.value})}/></label>
+                  </>
+                : <>
+                    <label>Autor<input value={editor.author || ''} onChange={e => setEditor({...editor, author:e.target.value})}/></label>
+                    <label>Fecha<input type="date" value={editor.date || ''} onChange={e => setEditor({...editor, date:e.target.value})}/></label>
+                    <label className="wide">Resumen<textarea value={editor.snippet || ''} onChange={e => setEditor({...editor, snippet:e.target.value})}/></label>
+                    <label className="wide">Introducción<textarea value={editor.intro || ''} onChange={e => setEditor({...editor, intro:e.target.value})}/></label>
+                    <label className="wide">Contenido<textarea value={(editor.body || []).join('\n\n')} onChange={e => setEditor({...editor, body:e.target.value.split(/\n\s*\n/)})}/></label>
+                  </>}
+
+              <label className="toggle-field">
+                <input type="checkbox" checked={Boolean(editor.published)} onChange={e => setEditor({...editor, published:e.target.checked})}/>
+                Publicar en la web
+              </label>
+            </div>
+
+            <div className="admin-modal-actions">
+              <button className="admin-secondary-btn" onClick={closeEditor}>Cancelar</button>
+              <button className="admin-primary-btn" onClick={saveEditor}>Guardar cambios</button>
+            </div>
+          </div>
+        </div>}
+      </main>
+
+      <style>{`
+        .admin-app{min-height:100vh;background:#f5f7fb;color:#0f172a;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;display:flex}
+        .admin-sidebar{width:250px;background:#07101d;color:#e2e8f0;min-height:100vh;padding:26px 18px 18px;display:flex;flex-direction:column;position:fixed;left:0;top:0;bottom:0}
+        .admin-brand{display:flex;align-items:center;gap:12px;padding:4px 10px 28px;border-bottom:1px solid rgba(255,255,255,.08)}
+        .admin-brand img{width:28px;height:28px;object-fit:contain}.admin-brand strong{display:block;font-size:.78rem;letter-spacing:.16em}.admin-brand span{display:block;color:#7f8da2;font-size:.68rem;margin-top:4px}
+        .admin-sidebar nav{display:flex;flex-direction:column;gap:6px;padding-top:22px}.admin-sidebar nav button{border:0;background:transparent;color:#9aa9bc;text-align:left;padding:12px 14px;border-radius:8px;font-size:.82rem;cursor:pointer}.admin-sidebar nav button:hover,.admin-sidebar nav button.active{background:#102038;color:#fff}
+        .admin-sidebar-user{margin-top:auto;border-top:1px solid rgba(255,255,255,.08);padding:16px 6px 0;display:flex;align-items:center;gap:9px}.admin-avatar{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;background:#1e3a8a;color:white;font-size:.75rem}.admin-sidebar-user div{min-width:0;flex:1}.admin-sidebar-user strong,.admin-sidebar-user small{display:block}.admin-sidebar-user strong{font-size:.74rem}.admin-sidebar-user small{color:#7f8da2;font-size:.64rem;margin-top:2px}.admin-sidebar-user button{background:none;border:0;color:#94a3b8;cursor:pointer;font-size:18px}
+        .admin-main{margin-left:250px;flex:1;padding:34px 44px 60px;max-width:1500px}.admin-topbar{display:flex;justify-content:space-between;align-items:flex-end;gap:20px;margin-bottom:28px}.admin-topbar h2{font-size:2rem;font-weight:450;margin:2px 0 0}.admin-topbar>a{color:#1e3a8a;text-decoration:none;font-size:.8rem}
+        .admin-eyebrow{color:#5278aa;font-size:.64rem;text-transform:uppercase;letter-spacing:.18em}.admin-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:18px}.admin-stats>div,.admin-panel{background:#fff;border:1px solid #e2e8f0;border-radius:12px;box-shadow:0 8px 28px rgba(15,23,42,.05)}.admin-stats>div{padding:20px}.admin-stats span,.admin-stats small{display:block;color:#64748b;font-size:.68rem}.admin-stats strong{display:block;font-size:2rem;font-weight:500;margin:7px 0 2px}.admin-grid-two{display:grid;grid-template-columns:1.3fr .7fr;gap:18px}.admin-panel{padding:24px}.admin-panel-head{display:flex;justify-content:space-between;align-items:center;gap:16px;margin-bottom:18px}.admin-panel h3{margin:3px 0 0;font-size:1.15rem;font-weight:500}.admin-activity>div{padding:14px 0;border-top:1px solid #eef2f7}.admin-activity span,.admin-activity small{display:block;color:#64748b;font-size:.68rem}.admin-activity strong{display:block;margin:5px 0;font-size:.86rem;font-weight:500}.admin-quick{display:grid;gap:9px}.admin-quick button,.admin-secondary-btn{border:1px solid #d8e0ea;background:#fff;color:#334155;padding:11px 14px;border-radius:8px;cursor:pointer;text-align:left}.admin-primary-btn{border:0;background:#163d75;color:#fff;padding:12px 16px;border-radius:8px;cursor:pointer;font-size:.78rem}.admin-primary-btn.compact{padding:9px 13px}.admin-primary-btn:disabled{cursor:not-allowed}.admin-demo-btn{border:0;background:transparent;color:#5278aa;padding:10px;cursor:pointer;font-size:.72rem}.admin-notice{background:#eaf2ff;border:1px solid #cbdcf5;color:#234a7d;padding:11px 14px;border-radius:8px;margin-bottom:18px;font-size:.78rem;display:flex;justify-content:space-between}.admin-notice button{border:0;background:none;cursor:pointer;color:inherit}.admin-table-wrap{overflow:auto}.admin-table-wrap table{width:100%;border-collapse:collapse;font-size:.75rem}.admin-table-wrap th{text-align:left;color:#64748b;font-size:.64rem;text-transform:uppercase;letter-spacing:.08em;padding:10px;border-bottom:1px solid #e2e8f0}.admin-table-wrap td{padding:14px 10px;border-bottom:1px solid #eef2f7;vertical-align:top}.admin-table-wrap td strong,.admin-table-wrap td small{display:block}.admin-table-wrap td small{color:#64748b;margin-top:4px;max-width:420px;line-height:1.4}.admin-status{padding:5px 8px;border-radius:999px;font-size:.62rem}.admin-status.published{background:#eaf7ef;color:#19733c}.admin-status.draft{background:#f1f5f9;color:#64748b}.admin-actions{white-space:nowrap}.admin-actions button{border:0;background:none;color:#1e3a8a;cursor:pointer;font-size:.7rem;margin-left:8px}.admin-empty{border:1px dashed #d5deea;padding:35px;border-radius:10px;text-align:center;color:#64748b}.admin-empty strong{color:#334155}.admin-empty p{max-width:620px;margin:10px auto 18px;line-height:1.6;font-size:.82rem}.admin-user-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}.admin-user-grid article{border:1px solid #e2e8f0;border-radius:10px;padding:18px}.admin-role{font-size:.6rem;letter-spacing:.14em;color:#1e3a8a}.admin-role.editor{color:#64748b}.admin-user-grid h4{margin:8px 0;font-size:.9rem}.admin-user-grid p,.admin-user-grid small{color:#64748b;font-size:.74rem;line-height:1.5}.admin-user-grid small{display:block;margin-top:10px}.admin-security-note{font-size:.66rem;color:#718096;line-height:1.55;margin-top:14px}.admin-security-note.wide{margin-top:20px;padding:14px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px}.admin-modal-backdrop{position:fixed;inset:0;background:rgba(2,8,23,.62);display:grid;place-items:center;padding:24px;z-index:2000}.admin-modal{background:#fff;width:min(900px,100%);max-height:90vh;overflow:auto;border-radius:14px;padding:24px}.admin-modal-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px}.admin-modal-head h3{margin:4px 0 0}.admin-modal-head>button{border:0;background:#f1f5f9;border-radius:50%;width:32px;height:32px;cursor:pointer}.admin-form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}.admin-form-grid label{font-size:.7rem;color:#475569}.admin-form-grid label.wide{grid-column:1/-1}.admin-form-grid input,.admin-form-grid select,.admin-form-grid textarea{display:block;width:100%;box-sizing:border-box;margin-top:6px;border:1px solid #d8e0ea;border-radius:7px;padding:10px;background:#fff;color:#0f172a;font:inherit}.admin-form-grid textarea{min-height:100px;resize:vertical}.toggle-field{grid-column:1/-1;display:flex;align-items:center;gap:8px}.toggle-field input{width:auto!important;margin:0!important}.admin-modal-actions{display:flex;justify-content:flex-end;gap:9px;margin-top:20px}.admin-login-shell{min-height:100vh;display:grid;place-items:center;background:radial-gradient(circle at 50% 0%,#13213a 0,#07101d 55%,#050b14 100%);padding:24px}.admin-login-card{width:min(420px,100%);background:rgba(255,255,255,.97);border-radius:16px;padding:34px;box-shadow:0 30px 80px rgba(0,0,0,.35)}.admin-login-logo-box{width:46px;height:46px;border-radius:10px;background:#07101d;display:grid;place-items:center;margin-bottom:18px}.admin-login-card h1{font-size:2rem;font-weight:500;margin:8px 0}.admin-login-card>p{color:#64748b;font-size:.82rem;line-height:1.55;margin:0 0 24px}.admin-login-card form{display:grid;gap:14px}.admin-login-card label{font-size:.7rem;color:#475569}.admin-login-card input{display:block;width:100%;box-sizing:border-box;margin-top:6px;border:1px solid #d8e0ea;border-radius:8px;padding:12px;background:#fff;color:#0f172a;font:inherit}.admin-login-card input:focus{outline:none;border-color:#5d84b5;box-shadow:0 0 0 3px rgba(93,132,181,.12)}.admin-login-card form .admin-primary-btn{width:100%;margin-top:2px}.admin-back-link{display:block;border:0;background:none;color:#5278aa;margin:20px auto 0;cursor:pointer;font-size:.72rem}.admin-demo-btn{display:none}
+        @media (max-width: 900px){.admin-sidebar{width:210px}.admin-main{margin-left:210px;padding:28px 22px}.admin-stats{grid-template-columns:repeat(2,1fr)}.admin-grid-two,.admin-user-grid{grid-template-columns:1fr}.admin-form-grid{grid-template-columns:1fr}.admin-form-grid label.wide,.toggle-field{grid-column:auto}}
+        @media (max-width: 700px){.admin-sidebar{position:static;width:100%;min-height:auto;padding:14px;box-sizing:border-box}.admin-app{display:block}.admin-sidebar nav{display:grid;grid-template-columns:repeat(2,1fr);padding-top:12px}.admin-sidebar-user{margin-top:14px}.admin-main{margin-left:0;padding:20px 14px 40px}.admin-topbar{align-items:flex-start}.admin-topbar h2{font-size:1.5rem}.admin-login-card{padding:26px 22px}.admin-table-wrap{margin:0 -8px}.admin-table-wrap table{min-width:650px}}
+      `}</style>
+    </div>
+  );
+}
+
 
   const menu = [
     ['dashboard', 'Dashboard'], ['cases', 'Casos'], ['articles', 'Artículos'], ['contacts', 'Consultas'], ['settings', 'Configuración']
