@@ -2370,8 +2370,8 @@ function AdminPage() {
   const [section, setSection] = useState('dashboard');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [caseItems, setCaseItems] = useState(caseStudies.map((item) => ({ ...item, published: true })));
-  const [articleItems, setArticleItems] = useState(articles.map((item) => ({ ...item, published: true })));
+  const [caseItems, setCaseItems] = useState([]);
+  const [articleItems, setArticleItems] = useState([]);
   const [editor, setEditor] = useState(null);
   const [editorType, setEditorType] = useState(null);
   const [adminNotice, setAdminNotice] = useState('');
@@ -2417,6 +2417,65 @@ function AdminPage() {
     };
   }, []);
 
+    useEffect(() => {
+  if (!loggedIn) return;
+
+  const loadContent = async () => {
+    const [
+      { data: articlesData, error: articlesError },
+      { data: casesData, error: casesError }
+    ] = await Promise.all([
+      supabase
+        .from('articles')
+        .select('*')
+        .order('article_date', { ascending: false }),
+
+      supabase
+        .from('cases')
+        .select('*')
+        .order('case_date', { ascending: false })
+    ]);
+
+    if (articlesError) {
+      console.error('Error cargando artículos:', articlesError);
+      setAdminNotice('No se pudieron cargar los artículos desde Supabase.');
+      return;
+    }
+
+    if (casesError) {
+      console.error('Error cargando casos:', casesError);
+      setAdminNotice('No se pudieron cargar los casos desde Supabase.');
+      return;
+    }
+
+    const mappedArticles = (articlesData || []).map((item) => ({
+      ...item,
+      date: item.article_date || '',
+      displayDate: item.article_date
+        ? new Date(`${item.article_date}T00:00:00`).toLocaleDateString('es-ES')
+        : '',
+      published: item.status === 'published',
+      body: item.body
+        ? item.body.split(/\n\s*\n/)
+        : []
+    }));
+
+    const mappedCases = (casesData || []).map((item) => ({
+      ...item,
+      date: item.case_date || '',
+      displayDate: item.case_date
+        ? new Date(`${item.case_date}T00:00:00`).toLocaleDateString('es-ES')
+        : '',
+      published: item.status === 'published'
+    }));
+
+    setArticleItems(mappedArticles);
+    setCaseItems(mappedCases);
+  };
+
+  loadContent();
+}, [loggedIn]);
+  
   const handleLogin = async (e) => {
     e.preventDefault();
 
@@ -2466,28 +2525,210 @@ function AdminPage() {
 
   const closeEditor = () => { setEditor(null); setEditorType(null); };
 
-  const saveEditor = () => {
-    if (!editor?.title?.trim()) return setAdminNotice('El título es obligatorio.');
-    if (editorType === 'case') {
-      setCaseItems((prev) => {
-        const exists = prev.some((item) => item.id === editor.id);
-        return exists ? prev.map((item) => item.id === editor.id ? editor : item) : [...prev, editor];
-      });
+    const saveEditor = async () => {
+  if (!editor?.title?.trim()) {
+    setAdminNotice('El título es obligatorio.');
+    return;
+  }
+
+  const {
+    data: { user },
+    error: userError
+  } = await supabase.auth.getUser();
+
+  if (userError || !user) {
+    setAdminNotice('No se pudo identificar al usuario autenticado.');
+    return;
+  }
+
+  if (editorType === 'case') {
+    const caseData = {
+      title: editor.title.trim(),
+      slug: editor.slug || editor.title
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-|-$/g, ''),
+      area: editor.area || null,
+      category: editor.category || null,
+      case_date: editor.date || null,
+      summary: editor.summary || null,
+      context: editor.context || null,
+      strategy: editor.strategy || null,
+      result: editor.result || null,
+      keywords: Array.isArray(editor.keywords)
+        ? editor.keywords
+        : [],
+      tags: Array.isArray(editor.tags)
+        ? editor.tags
+        : [],
+      status: editor.published ? 'published' : 'draft',
+      created_by: user.id
+    };
+
+    const isExistingCase =
+      editor.id &&
+      !String(editor.id).startsWith('nuevo-caso-');
+
+    let data;
+    let error;
+
+    if (isExistingCase) {
+      ({ data, error } = await supabase
+        .from('cases')
+        .update(caseData)
+        .eq('id', editor.id)
+        .select()
+        .single());
     } else {
-      setArticleItems((prev) => {
-        const exists = prev.some((item) => item.id === editor.id);
-        return exists ? prev.map((item) => item.id === editor.id ? editor : item) : [...prev, editor];
-      });
+      ({ data, error } = await supabase
+        .from('cases')
+        .insert(caseData)
+        .select()
+        .single());
     }
-    setAdminNotice('Cambios guardados en esta sesión de demostración. La persistencia real se conectará a Supabase.');
+
+    if (error) {
+      console.error('Error guardando caso:', error);
+      setAdminNotice(`No se pudo guardar el caso: ${error.message}`);
+      return;
+    }
+
+    const mappedCase = {
+      ...data,
+      date: data.case_date || '',
+      displayDate: data.case_date
+        ? new Date(`${data.case_date}T00:00:00`).toLocaleDateString('es-ES')
+        : '',
+      published: data.status === 'published'
+    };
+
+    setCaseItems((prev) => {
+      const exists = prev.some((item) => item.id === mappedCase.id);
+
+      return exists
+        ? prev.map((item) =>
+            item.id === mappedCase.id ? mappedCase : item
+          )
+        : [mappedCase, ...prev];
+    });
+
+    setAdminNotice(
+      isExistingCase
+        ? 'Caso actualizado correctamente.'
+        : 'Caso creado correctamente.'
+    );
+
     closeEditor();
+    return;
+  }
+
+  const articleData = {
+    title: editor.title.trim(),
+    slug: editor.slug || editor.title
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/^-|-$/g, ''),
+    author: editor.author || null,
+    area: editor.area || null,
+    article_date: editor.date || null,
+    snippet: editor.snippet || null,
+    intro: editor.intro || null,
+    body: Array.isArray(editor.body)
+      ? editor.body.join('\n\n')
+      : editor.body || null,
+    keywords: Array.isArray(editor.keywords)
+      ? editor.keywords
+      : [],
+    status: editor.published ? 'published' : 'draft',
+    created_by: user.id
   };
 
-  const deleteItem = (type, id) => {
-    if (!window.confirm('¿Seguro que quieres eliminar este elemento?')) return;
-    if (type === 'case') setCaseItems((prev) => prev.filter((item) => item.id !== id));
-    else setArticleItems((prev) => prev.filter((item) => item.id !== id));
+  const isExistingArticle =
+    editor.id &&
+    !String(editor.id).startsWith('nuevo-articulo-');
+
+  let data;
+  let error;
+
+  if (isExistingArticle) {
+    ({ data, error } = await supabase
+      .from('articles')
+      .update(articleData)
+      .eq('id', editor.id)
+      .select()
+      .single());
+  } else {
+    ({ data, error } = await supabase
+      .from('articles')
+      .insert(articleData)
+      .select()
+      .single());
+  }
+
+  if (error) {
+    console.error('Error guardando artículo:', error);
+    setAdminNotice(`No se pudo guardar el artículo: ${error.message}`);
+    return;
+  }
+
+  const mappedArticle = {
+    ...data,
+    date: data.article_date || '',
+    displayDate: data.article_date
+      ? new Date(`${data.article_date}T00:00:00`).toLocaleDateString('es-ES')
+      : '',
+    published: data.status === 'published',
+    body: data.body
+      ? data.body.split(/\n\s*\n/)
+      : []
   };
+
+  setArticleItems((prev) => {
+    const exists = prev.some((item) => item.id === mappedArticle.id);
+
+    return exists
+      ? prev.map((item) =>
+          item.id === mappedArticle.id ? mappedArticle : item
+        )
+      : [mappedArticle, ...prev];
+  });
+
+  setAdminNotice(
+    isExistingArticle
+      ? 'Artículo actualizado correctamente.'
+      : 'Artículo creado correctamente.'
+  );
+
+  closeEditor();
+};
+
+  const deleteItem = async (type, id) => {
+  if (!window.confirm('¿Seguro que quieres eliminar este elemento?')) return;
+
+  const table = type === 'case' ? 'cases' : 'articles';
+
+  const { error } = await supabase
+    .from(table)
+    .delete()
+    .eq('id', id);
+
+  if (error) {
+    console.error(`Error eliminando ${type}:`, error);
+    setAdminNotice(`No se pudo eliminar: ${error.message}`);
+    return;
+  }
+
+  if (type === 'case') {
+    setCaseItems((prev) => prev.filter((item) => item.id !== id));
+    setAdminNotice('Caso eliminado correctamente.');
+  } else {
+    setArticleItems((prev) => prev.filter((item) => item.id !== id));
+    setAdminNotice('Artículo eliminado correctamente.');
+  }
+};
 
   if (authLoading) {
     return (
