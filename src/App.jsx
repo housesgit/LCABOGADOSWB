@@ -2381,6 +2381,7 @@ function AdminPage() {
   const [caseItems, setCaseItems] = useState([]);
   const [articleItems, setArticleItems] = useState([]);
   const [contactItems, setContactItems] = useState([]);
+  const [selectedContact, setSelectedContact] = useState(null);
   const [editor, setEditor] = useState(null);
   const [editorType, setEditorType] = useState(null);
   const [adminNotice, setAdminNotice] = useState('');
@@ -2512,6 +2513,69 @@ function AdminPage() {
     loadContent();
   }, [loggedIn]);
   
+  const openContact = (contact) => {
+  setSelectedContact(contact);
+};
+
+const closeContact = () => {
+  setSelectedContact(null);
+};
+
+const updateContactStatus = async (contactId, status) => {
+  const { error } = await supabase
+    .from('contact_submissions')
+    .update({ status })
+    .eq('id', contactId);
+
+  if (error) {
+    console.error('Error actualizando consulta:', error);
+    setAdminNotice('No se pudo actualizar el estado de la consulta.');
+    return;
+  }
+
+  setContactItems((current) =>
+    current.map((item) =>
+      item.id === contactId
+        ? { ...item, status }
+        : item
+    )
+  );
+
+  setSelectedContact((current) =>
+    current && current.id === contactId
+      ? { ...current, status }
+      : current
+  );
+
+  setAdminNotice('Estado de la consulta actualizado.');
+};
+
+const deleteContact = async (contactId) => {
+  const confirmed = window.confirm(
+    '¿Está seguro de que desea eliminar esta consulta? Esta acción no se puede deshacer.'
+  );
+
+  if (!confirmed) return;
+
+  const { error } = await supabase
+    .from('contact_submissions')
+    .delete()
+    .eq('id', contactId);
+
+  if (error) {
+    console.error('Error eliminando consulta:', error);
+    setAdminNotice('No se pudo eliminar la consulta.');
+    return;
+  }
+
+  setContactItems((current) =>
+    current.filter((item) => item.id !== contactId)
+  );
+
+  setSelectedContact(null);
+  setAdminNotice('Consulta eliminada correctamente.');
+};
+
   const handleLogin = async (e) => {
     e.preventDefault();
 
@@ -3040,79 +3104,201 @@ function AdminPage() {
         </section>}
 
         {section === 'contacts' && <section className="admin-panel admin-list-panel">
-          <div className="admin-panel-head">
-            <div>
-              <span className="admin-eyebrow">Entrada</span>
-              <h3>Consultas</h3>
-            </div>
-            <span className="admin-status published">
-              {contactItems.length} recibidas
-            </span>
+  <div className="admin-panel-head">
+    <div>
+      <span className="admin-eyebrow">Entrada</span>
+      <h3>Consultas</h3>
+    </div>
+
+    <span className="admin-status published">
+      {contactItems.length} recibidas
+    </span>
+  </div>
+
+  {contactItems.length === 0 ? (
+    <div className="admin-empty">
+      <strong>No hay consultas todavía</strong>
+      <p>
+        Las solicitudes enviadas desde el formulario de Contacto aparecerán aquí.
+      </p>
+    </div>
+  ) : (
+    <div className="admin-table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Contacto</th>
+            <th>Consulta</th>
+            <th>Fecha</th>
+            <th>Estado</th>
+            <th>Acciones</th>
+          </tr>
+        </thead>
+
+        <tbody>
+          {contactItems.map(item => (
+            <tr key={item.id}>
+              <td>
+                <strong>{item.name || 'Sin nombre'}</strong>
+                <small>{item.email || 'Sin correo'}</small>
+              </td>
+
+              <td>
+                <div style={{
+                  maxWidth: '420px',
+                  whiteSpace: 'normal',
+                  lineHeight: 1.5
+                }}>
+                  {item.message || 'Sin mensaje'}
+                </div>
+              </td>
+
+              <td>
+                {item.displayDate}
+              </td>
+
+              <td>
+                <span className={`admin-status ${
+                  item.status === 'new'
+                    ? 'draft'
+                    : 'published'
+                }`}>
+                  {item.status === 'new'
+                    ? 'Nueva'
+                    : item.status === 'reviewing'
+                      ? 'En revisión'
+                      : item.status === 'answered'
+                        ? 'Respondida'
+                        : item.status === 'closed'
+                          ? 'Cerrada'
+                          : item.status}
+                </span>
+              </td>
+
+              <td className="admin-actions">
+                <button onClick={() => openContact(item)}>
+                  Abrir
+                </button>
+
+                <button onClick={() => deleteContact(item.id)}>
+                  Eliminar
+                </button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )}
+
+  {selectedContact && (
+    <div
+      className="admin-modal-backdrop"
+      onMouseDown={(e) => {
+        if (e.target === e.currentTarget) {
+          closeContact();
+        }
+      }}
+    >
+      <div className="admin-modal">
+        <div className="admin-modal-head">
+          <div>
+            <span className="admin-eyebrow">Consulta</span>
+            <h3>
+              {selectedContact.name || 'Consulta sin nombre'}
+            </h3>
           </div>
 
-          {contactItems.length === 0 ? (
-            <div className="admin-empty">
-              <strong>No hay consultas todavía</strong>
-              <p>Las solicitudes enviadas desde el formulario de Contacto aparecerán aquí.</p>
-            </div>
-          ) : (
-            <div className="admin-table-wrap">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Contacto</th>
-                    <th>Consulta</th>
-                    <th>Fecha</th>
-                    <th>Estado</th>
-                  </tr>
-                </thead>
+          <button onClick={closeContact}>×</button>
+        </div>
 
-                <tbody>
-                  {contactItems.map(item => (
-                    <tr key={item.id}>
-                      <td>
-                        <strong>{item.name || 'Sin nombre'}</strong>
-                        <small>{item.email || 'Sin correo'}</small>
-                      </td>
+        <div className="admin-form-grid">
+          <label>
+            Nombre
+            <input
+              value={selectedContact.name || ''}
+              readOnly
+            />
+          </label>
 
-                      <td>
-                        <div style={{
-                          maxWidth: '420px',
-                          whiteSpace: 'normal',
-                          lineHeight: 1.5
-                        }}>
-                          {item.message || 'Sin mensaje'}
-                        </div>
-                      </td>
+          <label>
+            Correo electrónico
+            <input
+              value={selectedContact.email || ''}
+              readOnly
+            />
+          </label>
 
-                      <td>
-                        {item.displayDate}
-                      </td>
+          <label className="wide">
+            Fecha de recepción
+            <input
+              value={selectedContact.displayDate || ''}
+              readOnly
+            />
+          </label>
 
-                      <td>
-                        <span className={`admin-status ${
-                          item.status === 'new'
-                            ? 'draft'
-                            : 'published'
-                        }`}>
-                          {item.status === 'new'
-                            ? 'Nueva'
-                            : item.status === 'reviewing'
-                              ? 'En revisión'
-                              : item.status === 'answered'
-                                ? 'Respondida'
-                                : item.status === 'closed'
-                                  ? 'Cerrada'
-                                  : item.status}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </section>}
+          <label className="wide">
+            Consulta
+            <textarea
+              value={selectedContact.message || ''}
+              readOnly
+              style={{
+                minHeight: '180px',
+                resize: 'vertical'
+              }}
+            />
+          </label>
+
+          <label className="wide">
+            Estado
+            <select
+              value={selectedContact.status || 'new'}
+              onChange={(e) =>
+                updateContactStatus(
+                  selectedContact.id,
+                  e.target.value
+                )
+              }
+            >
+              <option value="new">Nueva</option>
+              <option value="reviewing">En revisión</option>
+              <option value="answered">Respondida</option>
+              <option value="closed">Cerrada</option>
+            </select>
+          </label>
+        </div>
+
+        <div className="admin-modal-actions">
+          <button
+            className="admin-secondary-btn"
+            onClick={closeContact}
+          >
+            Cerrar
+          </button>
+
+          <button
+            className="admin-primary-btn"
+            onClick={() => {
+              window.location.href =
+                `mailto:${selectedContact.email || ''}?subject=${encodeURIComponent(
+                  'Consulta - LC Abogados'
+                )}`;
+            }}
+          >
+            Responder por correo
+          </button>
+
+          <button
+            className="admin-danger-btn"
+            onClick={() => deleteContact(selectedContact.id)}
+          >
+            Eliminar consulta
+          </button>
+        </div>
+      </div>
+    </div>
+  )}
+</section>}
 
         {section === 'settings' && <section className="admin-panel">
           <div className="admin-panel-head">
