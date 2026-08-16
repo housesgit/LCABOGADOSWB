@@ -2513,68 +2513,97 @@ function AdminPage() {
     loadContent();
   }, [loggedIn]);
   
-  const openContact = (contact) => {
-  setSelectedContact(contact);
-};
+    const openContact = async (contact) => {
+    setSelectedContact(contact);
 
-const closeContact = () => {
-  setSelectedContact(null);
-};
+    // Al abrir una consulta nueva, la marcamos automáticamente como leída.
+    if (contact.status !== 'new') return;
 
-const updateContactStatus = async (contactId, status) => {
-  const { error } = await supabase
-    .from('contact_submissions')
-    .update({ status })
-    .eq('id', contactId);
+    const { error } = await supabase
+      .from('contact_submissions')
+      .update({ status: 'read' })
+      .eq('id', contact.id);
 
-  if (error) {
-    console.error('Error actualizando consulta:', error);
-    setAdminNotice('No se pudo actualizar el estado de la consulta.');
-    return;
-  }
+    if (error) {
+      console.error('Error marcando consulta como leída:', error);
+      setAdminNotice('No se pudo marcar la consulta como leída.');
+      return;
+    }
 
-  setContactItems((current) =>
-    current.map((item) =>
-      item.id === contactId
-        ? { ...item, status }
-        : item
-    )
-  );
+    const updatedContact = {
+      ...contact,
+      status: 'read'
+    };
 
-  setSelectedContact((current) =>
-    current && current.id === contactId
-      ? { ...current, status }
-      : current
-  );
+    setContactItems((current) =>
+      current.map((item) =>
+        item.id === contact.id
+          ? updatedContact
+          : item
+      )
+    );
 
-  setAdminNotice('Estado de la consulta actualizado.');
-};
+    setSelectedContact(updatedContact);
+  };
 
-const deleteContact = async (contactId) => {
-  const confirmed = window.confirm(
-    '¿Está seguro de que desea eliminar esta consulta? Esta acción no se puede deshacer.'
-  );
+  const closeContact = () => {
+    setSelectedContact(null);
+  };
 
-  if (!confirmed) return;
+  const updateContactStatus = async (contactId, status) => {
+    const { error } = await supabase
+      .from('contact_submissions')
+      .update({ status })
+      .eq('id', contactId);
 
-  const { error } = await supabase
-    .from('contact_submissions')
-    .delete()
-    .eq('id', contactId);
+    if (error) {
+      console.error('Error actualizando estado:', error);
+      setAdminNotice('No se pudo actualizar el estado de la consulta.');
+      return;
+    }
 
-  if (error) {
-    console.error('Error eliminando consulta:', error);
-    setAdminNotice('No se pudo eliminar la consulta.');
-    return;
-  }
+    setContactItems((current) =>
+      current.map((item) =>
+        item.id === contactId
+          ? { ...item, status }
+          : item
+      )
+    );
 
-  setContactItems((current) =>
-    current.filter((item) => item.id !== contactId)
-  );
+    setSelectedContact((current) =>
+      current && current.id === contactId
+        ? { ...current, status }
+        : current
+    );
 
-  setSelectedContact(null);
-  setAdminNotice('Consulta eliminada correctamente.');
-};
+    setAdminNotice('Estado de la consulta actualizado.');
+  };
+
+  const deleteContact = async (contactId) => {
+    const confirmed = window.confirm(
+      '¿Seguro que quieres eliminar esta consulta? Esta acción no se puede deshacer.'
+    );
+
+    if (!confirmed) return;
+
+    const { error } = await supabase
+      .from('contact_submissions')
+      .delete()
+      .eq('id', contactId);
+
+    if (error) {
+      console.error('Error eliminando consulta:', error);
+      setAdminNotice('No se pudo eliminar la consulta.');
+      return;
+    }
+
+    setContactItems((current) =>
+      current.filter((item) => item.id !== contactId)
+    );
+
+    setSelectedContact(null);
+    setAdminNotice('Consulta eliminada correctamente.');
+  };
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -3160,18 +3189,20 @@ const deleteContact = async (contactId) => {
               <td>
                 <span className={`admin-status ${
                   item.status === 'new'
-                    ? 'draft'
-                    : 'published'
+  ? 'draft'
+  : item.status === 'read'
+    ? 'published'
+    : 'published'
                 }`}>
                   {item.status === 'new'
-                    ? 'Nueva'
-                    : item.status === 'reviewing'
-                      ? 'En revisión'
-                      : item.status === 'answered'
-                        ? 'Respondida'
-                        : item.status === 'closed'
-                          ? 'Cerrada'
-                          : item.status}
+  ? 'Nueva'
+  : item.status === 'read'
+    ? 'En revisión'
+    : item.status === 'replied'
+      ? 'Respondida'
+      : item.status === 'archived'
+        ? 'Archivada'
+        : item.status}
                 </span>
               </td>
 
@@ -3261,9 +3292,9 @@ const deleteContact = async (contactId) => {
               }
             >
               <option value="new">Nueva</option>
-              <option value="reviewing">En revisión</option>
-              <option value="answered">Respondida</option>
-              <option value="closed">Cerrada</option>
+<option value="read">En revisión</option>
+<option value="replied">Respondida</option>
+<option value="archived">Archivada</option>
             </select>
           </label>
         </div>
