@@ -5,6 +5,24 @@ import socio1 from './LACOUTURE.jpg';
 import socio2 from './CORONADO.jpg';
 import { supabase } from './supabaseClient'
 
+const submitContactForm = async ({ name, email, message }) => {
+  const { data, error } = await supabase
+    .from('contact_submissions')
+    .insert({
+      name: name.trim(),
+      email: email.trim(),
+      message: message.trim()
+    })
+    .select()
+    .single();
+
+  if (error) {
+    console.error('Error enviando consulta:', error);
+    throw error;
+  }
+
+  return data;
+};
 
 const WHATSAPP_URL = 'https://wa.me/573113361929?text=';
 const whatsappGeneral = `${WHATSAPP_URL}${encodeURIComponent('Hola, me gustaría solicitar asesoría jurídica.')}`;
@@ -368,9 +386,10 @@ const dedicatedNavItems = [
     icon: <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3.5A1.5 1.5 0 0 0 4.5 5v14A1.5 1.5 0 0 0 6 20.5h12a1.5 1.5 0 0 0 1.5-1.5V8L13 3.5Z" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round"/><path d="M13 3.5V8h6.5M8 12h8M8 15.5h8" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/></svg>
   },
   {
-    label: 'Contacto', href: '#contacto',
-    icon: <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="1.5" fill="none" stroke="currentColor" strokeWidth="1.6"/><path d="m4 7 8 6 8-6" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/></svg>
-  }
+  label: 'Contacto', href: '#contacto',
+  scrollToContact: true,
+  icon: <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="1.5" fill="none" stroke="currentColor" strokeWidth="1.6"/><path d="m4 7 8 6 8-6" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/></svg>
+}
 ];
 
 function DedicatedWhatsappButton() {
@@ -407,7 +426,17 @@ function PageNavbar({ scrolled, isMenuOpen, setIsMenuOpen, navigate, transitionP
               key={item.href}
               href={item.href}
               className="dedicated-nav-link"
-              onClick={(e) => { e.preventDefault(); navigate(item.href); }}
+              onClick={(e) => {
+  e.preventDefault();
+
+  if (item.href === '#contacto') {
+  setScrollToContact(true);
+  navigate('#inicio');
+  return;
+}
+
+  navigate(item.href);
+}}
               title={item.label}
             >
               <span className="dedicated-nav-label">{item.label}</span>
@@ -1601,35 +1630,6 @@ function PageNavbar({ scrolled, isMenuOpen, setIsMenuOpen, navigate, transitionP
   );
 }
 
-function ContactDedicatedPage() {
-  const [enviado, setEnviado] = useState(false);
-  const handleSubmit = (e) => { e.preventDefault(); setEnviado(true); setTimeout(() => setEnviado(false), 5000); e.currentTarget.reset(); };
-  return (
-    <div className="dedicated-page-enter contact-dedicated-page" style={{ minHeight: '100vh', paddingTop: '120px', backgroundColor: '#fff', color: '#111827', fontFamily: 'Georgia, serif' }}>
-      <section className="container-padding-mobile" style={{ width: '100%', boxSizing: 'border-box', padding: '60px 64px', backgroundColor: '#fff' }}>
-        <div style={{ maxWidth: '700px', margin: '0 auto' }}>
-          <div style={{ textAlign: 'center', marginBottom: '60px' }}>
-            <span style={{ fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.3em', color: '#1e3a8a', display: 'block', marginBottom: '12px', fontFamily: '-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif' }}>Asesoría Legal a su Medida</span>
-            <h1 style={{ fontSize: '2.5rem', fontWeight: 500, margin: '0 0 16px', color: '#0f2043', letterSpacing: '0.05em', textTransform: 'uppercase' }}>Hablemos de su caso</h1>
-            <p style={{ color: '#4b5563', fontSize: '1rem', margin: 0 }}>Comparta los detalles de su situación. Analizaremos su requerimiento con total discreción y le daremos una respuesta clara.</p>
-          </div>
-          {enviado && <div style={{ backgroundColor: '#dcfce7', color: '#166534', border: '1px solid #bbf7d0', padding: '20px', marginBottom: '31px', fontSize: '0.9rem', textAlign: 'center' }}>Su solicitud ha sido registrada con éxito. Nos pondremos en contacto a la brevedad.</div>}
-          <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-            <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.2em', marginBottom: '0', color: '#374151', fontFamily: '-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif' }}>Nombre completo o Empresa</label>
-            <input required type="text" placeholder="Ej. Corporación S.A." style={{ width: '100%', backgroundColor: '#f9fafb', border: '1px solid #d1d5db', padding: '16px 20px', color: '#111827', boxSizing: 'border-box', fontSize: '0.95rem' }} />
-            <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.2em', margin: '10px 0 0', color: '#374151', fontFamily: '-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif' }}>Correo electrónico de contacto</label>
-            <input required type="email" placeholder="contacto@ejemplo.com" style={{ width: '100%', backgroundColor: '#f9fafb', border: '1px solid #d1d5db', padding: '16px 20px', color: '#111827', boxSizing: 'border-box', fontSize: '0.95rem' }} />
-            <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.2em', margin: '10px 0 0', color: '#374151', fontFamily: '-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif' }}>Detalle de la consulta</label>
-            <textarea required rows="5" placeholder="Describa brevemente su requerimiento legal..." style={{ width: '100%', backgroundColor: '#f9fafb', border: '1px solid #d1d5db', padding: '16px 20px', color: '#111827', resize: 'vertical', boxSizing: 'border-box', fontSize: '0.95rem' }} />
-            <button type="submit" style={{ backgroundColor: '#1e3a8a', border: '0.125em solid #1e3a8a', color: '#fff', cursor: 'pointer', padding: '1em 2.3em', margin: '12px 0 0', minHeight: '3.75em', fontFamily: '-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif', fontSize: '0.8rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.25em' }}>Enviar Consulta</button>
-          </form>
-        </div>
-      </section>
-      <style>{`@media(max-width:768px){.container-padding-mobile{padding-left:20px!important;padding-right:20px!important}}`}</style>
-    </div>
-  );
-}
-
 const pageStyles = {
   bg: '#06090e',
   panel: '#0d131f',
@@ -2418,63 +2418,63 @@ function AdminPage() {
   }, []);
 
     useEffect(() => {
-  if (!loggedIn) return;
+    if (!loggedIn) return;
 
-  const loadContent = async () => {
-    const [
-      { data: articlesData, error: articlesError },
-      { data: casesData, error: casesError }
-    ] = await Promise.all([
-      supabase
-        .from('articles')
-        .select('*')
-        .order('article_date', { ascending: false }),
+    const loadContent = async () => {
+      const [
+        { data: articlesData, error: articlesError },
+        { data: casesData, error: casesError }
+      ] = await Promise.all([
+        supabase
+          .from('articles')
+          .select('*')
+          .order('article_date', { ascending: false }),
 
-      supabase
-        .from('cases')
-        .select('*')
-        .order('case_date', { ascending: false })
-    ]);
+        supabase
+          .from('cases')
+          .select('*')
+          .order('case_date', { ascending: false })
+      ]);
 
-    if (articlesError) {
-      console.error('Error cargando artículos:', articlesError);
-      setAdminNotice('No se pudieron cargar los artículos desde Supabase.');
-      return;
-    }
+      if (articlesError) {
+        console.error('Error cargando artículos:', articlesError);
+        setAdminNotice('No se pudieron cargar los artículos desde Supabase.');
+        return;
+      }
 
-    if (casesError) {
-      console.error('Error cargando casos:', casesError);
-      setAdminNotice('No se pudieron cargar los casos desde Supabase.');
-      return;
-    }
+      if (casesError) {
+        console.error('Error cargando casos:', casesError);
+        setAdminNotice('No se pudieron cargar los casos desde Supabase.');
+        return;
+      }
 
-    const mappedArticles = (articlesData || []).map((item) => ({
-      ...item,
-      date: item.article_date || '',
-      displayDate: item.article_date
-        ? new Date(`${item.article_date}T00:00:00`).toLocaleDateString('es-ES')
-        : '',
-      published: item.status === 'published',
-      body: item.body
-        ? item.body.split(/\n\s*\n/)
-        : []
-    }));
+      const mappedArticles = (articlesData || []).map((item) => ({
+        ...item,
+        date: item.article_date || '',
+        displayDate: item.article_date
+          ? new Date(`${item.article_date}T00:00:00`).toLocaleDateString('es-ES')
+          : '',
+        published: item.status === 'published',
+        body: item.body
+          ? item.body.split(/\n\s*\n/)
+          : []
+      }));
 
-    const mappedCases = (casesData || []).map((item) => ({
-      ...item,
-      date: item.case_date || '',
-      displayDate: item.case_date
-        ? new Date(`${item.case_date}T00:00:00`).toLocaleDateString('es-ES')
-        : '',
-      published: item.status === 'published'
-    }));
+      const mappedCases = (casesData || []).map((item) => ({
+        ...item,
+        date: item.case_date || '',
+        displayDate: item.case_date
+          ? new Date(`${item.case_date}T00:00:00`).toLocaleDateString('es-ES')
+          : '',
+        published: item.status === 'published'
+      }));
 
-    setArticleItems(mappedArticles);
-    setCaseItems(mappedCases);
-  };
+      setArticleItems(mappedArticles);
+      setCaseItems(mappedCases);
+    };
 
-  loadContent();
-}, [loggedIn]);
+    loadContent();
+  }, [loggedIn]);
   
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -3085,6 +3085,9 @@ function AdminPage() {
 
 export default function App() {
   const [enviado, setEnviado] = useState(false);
+  const [enviando, setEnviando] = useState(false);
+  const [errorEnvio, setErrorEnvio] = useState('');
+  const [scrollToContact, setScrollToContact] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [route, setRoute] = useState(() => (
@@ -3181,12 +3184,39 @@ export default function App() {
   };
 
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    setEnviado(true);
-    setTimeout(() => setEnviado(false), 5000);
-    e.currentTarget.reset();
-  };
+const handleSubmit = async (e) => {
+  e.preventDefault();
+
+  if (enviando) return;
+
+  setEnviando(true);
+  setErrorEnvio('');
+
+  const form = e.currentTarget;
+  const formData = new FormData(form);
+
+  const { error } = await supabase
+    .from('contact_submissions')
+    .insert({
+      name: formData.get('name'),
+      email: formData.get('email'),
+      message: formData.get('message'),
+      status: 'new'
+    });
+
+  setEnviando(false);
+
+  if (error) {
+    console.error('Error al enviar consulta:', error);
+    setErrorEnvio('No fue posible enviar su consulta. Por favor, inténtelo nuevamente.');
+    return;
+  }
+
+  setEnviado(true);
+  form.reset();
+
+  setTimeout(() => setEnviado(false), 5000);
+};
 
   const navItemStyle = {
     position: 'relative',
@@ -3254,10 +3284,11 @@ export default function App() {
         </svg>
       )
     },
-    { 
-      label: 'Contacto', 
-      href: '#contacto',
-      icon: (
+    {
+  label: 'Contacto',
+  href: '#contacto',
+  scrollToContact: true,
+  icon: (
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <path className="icon-path draw-animate" d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
           <polyline className="icon-path draw-animate" points="22,6 12,13 2,6"></polyline>
@@ -3334,15 +3365,6 @@ export default function App() {
       <>
         <PageNavbar scrolled={scrolled} isMenuOpen={isMenuOpen} setIsMenuOpen={setIsMenuOpen} navigate={navigate} transitionPhase={transitionPhase} />
         <ArticleDetailPage article={article} onNavigate={navigate} />
-      </>
-    );
-  }
-
-  if (route === '#contacto') {
-    return (
-      <>
-        <PageNavbar scrolled={scrolled} isMenuOpen={isMenuOpen} setIsMenuOpen={setIsMenuOpen} navigate={navigate} transitionPhase={transitionPhase} />
-        <ContactDedicatedPage />
       </>
     );
   }
@@ -3828,7 +3850,23 @@ export default function App() {
           </a>
 
           {menuItems.map((item, idx) => (
-            <a key={idx} href={item.href} onClick={(e) => { e.preventDefault(); navigate(item.href); }} style={navItemStyle} title={scrolled ? item.label : ""}>
+  <a
+    key={item.href}
+    href={item.href}
+    onClick={(e) => {
+  e.preventDefault();
+
+  if (item.href === '#contacto') {
+  setScrollToContact(true);
+  navigate('#inicio');
+  return;
+}
+
+  navigate(item.href);
+}}
+    style={navItemStyle}
+    title={scrolled ? item.label : ""}
+  >
               <div className={`nav-content-wrapper ${scrolled ? 'scrolled-mode' : ''}`}>
                 <span className="nav-label">{item.label}</span>
                 {scrolled && (
@@ -4153,7 +4191,9 @@ export default function App() {
                   <p style={{ color: '#94a3b8', margin: '0 0 24px 0', fontSize: '0.9rem', lineHeight: '1.6', fontWeight: '300' }}>{art.snippet}</p>
                 </div>
                 <div style={{ marginTop: '24px' }}>
-                  <a href={`#articulo/${art.id}`} onClick={(e) => { e.preventDefault(); navigate(`#articulo/${art.id}`); }} className="cta-consultar" style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif' }}>
+                  <a href={`#articulo/${art.id}`} 
+                  onClick={(e) => { 
+                    e.preventDefault(); navigate(`#articulo/${art.id}`); }} className="cta-consultar" style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif' }}>
                     <span className="hover-underline-animation" style={{ fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '0.15em', fontWeight: '500', marginRight: '8px' }}>
                       Leer artículo completo
                     </span>
@@ -4178,73 +4218,117 @@ export default function App() {
           </div>
           
           {enviado && (
+            
             <div style={{ backgroundColor: '#dcfce7', color: '#166534', border: '1px solid #bbf7d0', padding: '20px', borderRadius: '0px', marginBottom: '31px', fontSize: '0.9rem', textAlign: 'center', letterSpacing: '0.05em', fontWeight: '500' }}>
               Su solicitud ha sido registrada con éxito. Nos pondremos en contacto a la brevedad.
             </div>
           )}
 
+{errorEnvio && (
+  <div style={{
+    backgroundColor: '#fef2f2',
+    color: '#991b1b',
+    border: '1px solid #fecaca',
+    padding: '20px',
+    marginBottom: '31px',
+    fontSize: '0.9rem',
+    textAlign: 'center',
+    letterSpacing: '0.05em',
+    fontWeight: '500'
+  }}>
+    {errorEnvio}
+  </div>
+)}
+
           <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-            <div>
-              <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.2em', marginBottom: '10px', color: '#374151', fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif' }}>Nombre completo o Empresa</label>
-              <input required type="text" placeholder="Ej. Corporación S.A." style={{ width: '100%', backgroundColor: '#f9fafb', border: '1px solid #d1d5db', padding: '16px 20px', color: '#111827', borderRadius: '0px', fontSize: '0.95rem', outline: 'none', boxSizing: 'border-box', fontFamily: 'inherit' }} />
-            </div>
-            <div>
-              <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.2em', marginBottom: '10px', color: '#374151', fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif' }}>Correo electrónico de contacto</label>
-              <input required type="email" placeholder="contacto@ejemplo.com" style={{ width: '100%', backgroundColor: '#f9fafb', border: '1px solid #d1d5db', padding: '16px 20px', color: '#111827', borderRadius: '0px', fontSize: '0.95rem', outline: 'none', boxSizing: 'border-box', fontFamily: 'inherit' }} />
-            </div>
-            <div>
-              <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.2em', marginBottom: '10px', color: '#374151', fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif' }}>Detalle de la consulta</label>
-              <textarea required rows="5" placeholder="Describa brevemente su requerimiento legal..." style={{ width: '100%', backgroundColor: '#f9fafb', border: '1px solid #d1d5db', padding: '16px 20px', color: '#111827', borderRadius: '0px', fontSize: '0.95rem', resize: 'vertical', outline: 'none', boxSizing: 'border-box', fontFamily: 'inherit' }}></textarea>
-            </div>
-            
-            <button 
-              type="submit" 
-              style={{ 
-                appearance: 'none',
-                backgroundColor: '#1e3a8a',
-                border: '0.125em solid #1e3a8a',
-                borderRadius: '0px',
-                boxSizing: 'border-box',
-                color: '#ffffff',
-                cursor: 'pointer',
-                display: 'inline-block',
-                fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-                fontSize: '0.8rem',
-                fontWeight: '600',
-                lineHeight: 'normal',
-                margin: '12px 0 0 0',
-                minHeight: '3.75em',
-                minWidth: '0',
-                outline: 'none',
-                padding: '1em 2.3em',
-                textAlign: 'center',
-                textDecoration: 'none',
-                textTransform: 'uppercase',
-                letterSpacing: '0.25em',
-                transition: 'all 300ms cubic-bezier(.23, 1, 0.32, 1)',
-                userSelect: 'none',
-                WebkitUserSelect: 'none',
-                touchAction: 'manipulation',
-                willChange: 'transform',
-                boxShadow: 'none'
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.color = '#ffffff';
-                e.currentTarget.style.backgroundColor = '#1d4ed8';
-                e.currentTarget.style.borderColor = '#1d4ed8';
-                e.currentTarget.style.boxShadow = 'rgba(29, 78, 216, 0.35) 0 8px 15px';
-                e.currentTarget.style.transform = 'translateY(-2px)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.color = '#ffffff';
-                e.currentTarget.style.backgroundColor = '#1e3a8a';
-                e.currentTarget.style.borderColor = '#1e3a8a';
-                e.currentTarget.style.boxShadow = 'none';
-                e.currentTarget.style.transform = 'translateY(0)';
-              }}
-            >
-              Enviar Consulta</button>
-          </form>
+
+  <div>
+    <label>
+      Nombre completo o Empresa
+    </label>
+
+    <input
+      required
+      name="name"
+      type="text"
+      placeholder="Ej. Corporación S.A."
+      style={{
+        width: '100%',
+        backgroundColor: '#f9fafb',
+        border: '1px solid #d1d5db',
+        padding: '16px 20px',
+        color: '#111827',
+        borderRadius: '0px',
+        fontSize: '0.95rem',
+        outline: 'none',
+        boxSizing: 'border-box',
+        fontFamily: 'inherit'
+      }}
+    />
+  </div>
+
+  <div>
+    <label>
+      Correo electrónico de contacto
+    </label>
+
+    <input
+      required
+      name="email"
+      type="email"
+      placeholder="contacto@ejemplo.com"
+      style={{
+        width: '100%',
+        backgroundColor: '#f9fafb',
+        border: '1px solid #d1d5db',
+        padding: '16px 20px',
+        color: '#111827',
+        borderRadius: '0px',
+        fontSize: '0.95rem',
+        outline: 'none',
+        boxSizing: 'border-box',
+        fontFamily: 'inherit'
+      }}
+    />
+  </div>
+
+  <div>
+    <label>
+      Detalle de la consulta
+    </label>
+
+    <textarea
+      required
+      name="message"
+      rows="5"
+      placeholder="Describa brevemente su requerimiento legal..."
+      style={{
+        width: '100%',
+        backgroundColor: '#f9fafb',
+        border: '1px solid #d1d5db',
+        padding: '16px 20px',
+        color: '#111827',
+        borderRadius: '0px',
+        fontSize: '0.95rem',
+        resize: 'vertical',
+        outline: 'none',
+        boxSizing: 'border-box',
+        fontFamily: 'inherit'
+      }}
+    />
+  </div>
+
+  {errorEnvio && (
+    <div>
+      {errorEnvio}
+    </div>
+  )}
+
+  <button type="submit" disabled={enviando}>
+    {enviando ? 'Enviando...' : 'Enviar Consulta'}
+  </button>
+
+</form>
         </div>
       </section>
 
