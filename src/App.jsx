@@ -411,7 +411,7 @@ function DedicatedWhatsappButton() {
   );
 }
 
-function PageNavbar({ scrolled, isMenuOpen, setIsMenuOpen, navigate, transitionPhase }) {
+function PageNavbar({ scrolled, isMenuOpen, setIsMenuOpen, navigate, transitionPhase, setScrollToContact }) {
   return (
     <>
       <header className={`dedicated-navbar ${scrolled ? 'dedicated-navbar-scrolled' : ''}`}>
@@ -430,8 +430,7 @@ function PageNavbar({ scrolled, isMenuOpen, setIsMenuOpen, navigate, transitionP
   e.preventDefault();
 
   if (item.href === '#contacto') {
-  setScrollToContact(true);
-  navigate('#inicio');
+  navigate('#inicio', { scrollTo: 'contacto' });
   return;
 }
 
@@ -456,7 +455,17 @@ function PageNavbar({ scrolled, isMenuOpen, setIsMenuOpen, navigate, transitionP
               <a
                 key={item.href}
                 href={item.href}
-                onClick={(e) => { e.preventDefault(); navigate(item.href); }}
+                onClick={(e) => {
+                  e.preventDefault();
+
+                  if (item.href === '#contacto') {
+                    setScrollToContact(true);
+                    navigate('#inicio');
+                    return;
+                  }
+
+                  navigate(item.href);
+                }}
               >
                 {item.label}
               </a>
@@ -3085,9 +3094,9 @@ function AdminPage() {
 
 export default function App() {
   const [enviado, setEnviado] = useState(false);
-  const [enviando, setEnviando] = useState(false);
-  const [errorEnvio, setErrorEnvio] = useState('');
-  const [scrollToContact, setScrollToContact] = useState(false);
+const [enviando, setEnviando] = useState(false);
+const [errorEnvio, setErrorEnvio] = useState('');
+const [scrollToContact, setScrollToContact] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [route, setRoute] = useState(() => (
@@ -3102,6 +3111,10 @@ export default function App() {
   const [transitionPhase, setTransitionPhase] = useState('idle');
   const transitionTimerRef = useRef(null);
 
+  // ==========================================================
+  // CONTACTO: después de volver a Inicio, hacemos scroll
+  // hasta el formulario cuando la página ya está montada.
+  // ==========================================================
   
   useEffect(() => {
     const handleScroll = () => {
@@ -3130,59 +3143,65 @@ export default function App() {
     };
   }, []);
 
-  const navigate = (path) => {
-    if (path === '/admin') {
-      window.history.pushState({}, '', '/admin');
-      setRoute('#admin');
-      setIsMenuOpen(false);
-      setScrolled(false);
-      setTransitionPhase('idle');
-      window.scrollTo({ top: 0, behavior: 'auto' });
-      return;
-    }
-    if (path === '/') {
-      window.history.pushState({}, '', '/');
-      window.location.hash = '#inicio';
-      setRoute('#inicio');
-      setIsMenuOpen(false);
-      setScrolled(false);
-      setTransitionPhase('idle');
-      window.scrollTo({ top: 0, behavior: 'auto' });
-      return;
-    }
-    if (window.location.hash === path) {
-      setRoute(path);
-      setIsMenuOpen(false);
-      setScrolled(false);
-      window.scrollTo({ top: 0, behavior: 'auto' });
-      return;
-    }
-
-    if (transitionTimerRef.current) {
-      clearTimeout(transitionTimerRef.current);
-    }
-
+  const navigate = (path, options = {}) => {
+  if (path === '/admin') {
+    window.history.pushState({}, '', '/admin');
+    setRoute('#admin');
     setIsMenuOpen(false);
     setScrolled(false);
-    setTransitionPhase('cover');
+    setTransitionPhase('idle');
+    window.scrollTo({ top: 0, behavior: 'auto' });
+    return;
+  }
+
+  if (path === '/') {
+    window.history.pushState({}, '', '/');
+    window.location.hash = '#inicio';
+    setRoute('#inicio');
+    setIsMenuOpen(false);
+    setScrolled(false);
+    setTransitionPhase('idle');
+    window.scrollTo({ top: 0, behavior: 'auto' });
+    return;
+  }
+
+  if (transitionTimerRef.current) {
+    clearTimeout(transitionTimerRef.current);
+  }
+
+  setIsMenuOpen(false);
+  setScrolled(false);
+  setTransitionPhase('cover');
+
+  transitionTimerRef.current = setTimeout(() => {
+    window.location.hash = path;
+    setRoute(path);
+    window.scrollTo({ top: 0, behavior: 'auto' });
 
     transitionTimerRef.current = setTimeout(() => {
-      window.location.hash = path;
-      setRoute(path);
-      window.scrollTo({ top: 0, behavior: 'auto' });
+      setTransitionPhase('reveal');
 
-      // La nueva interfaz se monta mientras la pantalla sigue completamente cubierta.
-      // Luego retiramos la cubierta lentamente para que la navegación se sienta continua.
       transitionTimerRef.current = setTimeout(() => {
-        setTransitionPhase('reveal');
+        setTransitionPhase('idle');
 
-        transitionTimerRef.current = setTimeout(() => {
-          setTransitionPhase('idle');
-        }, 700);
-      }, 35);
-    }, 475);
-  };
+        if (options.scrollTo) {
+          requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+              const element = document.getElementById(options.scrollTo);
 
+              if (element) {
+                element.scrollIntoView({
+                  behavior: 'smooth',
+                  block: 'start'
+                });
+              }
+            });
+          });
+        }
+      }, 700);
+    }, 35);
+  }, 475);
+};
 
 const handleSubmit = async (e) => {
   e.preventDefault();
@@ -3304,7 +3323,7 @@ const handleSubmit = async (e) => {
   if (route === '#areas' || route.startsWith('#areas?')) {
     return (
       <>
-        <PageNavbar scrolled={scrolled} isMenuOpen={isMenuOpen} setIsMenuOpen={setIsMenuOpen} navigate={navigate} transitionPhase={transitionPhase} />
+        <PageNavbar scrolled={scrolled} isMenuOpen={isMenuOpen} setIsMenuOpen={setIsMenuOpen} navigate={navigate} transitionPhase={transitionPhase} setScrollToContact={setScrollToContact} />
         <AreasPage onBack={() => navigate('#inicio')} onNavigate={navigate} />
       </>
     );
@@ -3314,7 +3333,7 @@ const handleSubmit = async (e) => {
     const areaName = decodeURIComponent(route.slice('#area/'.length));
     return (
       <>
-        <PageNavbar scrolled={scrolled} isMenuOpen={isMenuOpen} setIsMenuOpen={setIsMenuOpen} navigate={navigate} transitionPhase={transitionPhase} />
+        <PageNavbar scrolled={scrolled} isMenuOpen={isMenuOpen} setIsMenuOpen={setIsMenuOpen} navigate={navigate} transitionPhase={transitionPhase} setScrollToContact={setScrollToContact} />
         <AreaDetailPage area={areaName} onNavigate={navigate} />
       </>
     );
@@ -3323,7 +3342,7 @@ const handleSubmit = async (e) => {
   if (route === '#firma') {
     return (
       <>
-        <PageNavbar scrolled={scrolled} isMenuOpen={isMenuOpen} setIsMenuOpen={setIsMenuOpen} navigate={navigate} transitionPhase={transitionPhase} />
+        <PageNavbar scrolled={scrolled} isMenuOpen={isMenuOpen} setIsMenuOpen={setIsMenuOpen} navigate={navigate} transitionPhase={transitionPhase} setScrollToContact={setScrollToContact} />
         <FirmPage onBack={() => navigate('#inicio')} onNavigate={navigate} />
       </>
     );
@@ -3332,7 +3351,7 @@ const handleSubmit = async (e) => {
   if (route === '#casos') {
     return (
       <>
-        <PageNavbar scrolled={scrolled} isMenuOpen={isMenuOpen} setIsMenuOpen={setIsMenuOpen} navigate={navigate} transitionPhase={transitionPhase} />
+        <PageNavbar scrolled={scrolled} isMenuOpen={isMenuOpen} setIsMenuOpen={setIsMenuOpen} navigate={navigate} transitionPhase={transitionPhase} setScrollToContact={setScrollToContact} />
         <CasesPage onBack={() => navigate('#inicio')} onNavigate={navigate} />
       </>
     );
@@ -3343,7 +3362,7 @@ const handleSubmit = async (e) => {
     const caso = caseStudies.find((item) => item.id === id);
     return (
       <>
-        <PageNavbar scrolled={scrolled} isMenuOpen={isMenuOpen} setIsMenuOpen={setIsMenuOpen} navigate={navigate} transitionPhase={transitionPhase} />
+        <PageNavbar scrolled={scrolled} isMenuOpen={isMenuOpen} setIsMenuOpen={setIsMenuOpen} navigate={navigate} transitionPhase={transitionPhase} setScrollToContact={setScrollToContact} />
         <CaseDetailPage caso={caso} onBack={() => navigate('#casos')} onNavigate={navigate} />
       </>
     );
@@ -3352,7 +3371,7 @@ const handleSubmit = async (e) => {
   if (route === '#articulos') {
     return (
       <>
-        <PageNavbar scrolled={scrolled} isMenuOpen={isMenuOpen} setIsMenuOpen={setIsMenuOpen} navigate={navigate} transitionPhase={transitionPhase} />
+        <PageNavbar scrolled={scrolled} isMenuOpen={isMenuOpen} setIsMenuOpen={setIsMenuOpen} navigate={navigate} transitionPhase={transitionPhase} setScrollToContact={setScrollToContact} />
         <ArticlesPage onBack={() => navigate('#inicio')} onNavigate={navigate} />
       </>
     );
@@ -3363,7 +3382,7 @@ const handleSubmit = async (e) => {
     const article = articles.find((item) => item.id === id);
     return (
       <>
-        <PageNavbar scrolled={scrolled} isMenuOpen={isMenuOpen} setIsMenuOpen={setIsMenuOpen} navigate={navigate} transitionPhase={transitionPhase} />
+        <PageNavbar scrolled={scrolled} isMenuOpen={isMenuOpen} setIsMenuOpen={setIsMenuOpen} navigate={navigate} transitionPhase={transitionPhase} setScrollToContact={setScrollToContact} />
         <ArticleDetailPage article={article} onNavigate={navigate} />
       </>
     );
@@ -3857,8 +3876,7 @@ const handleSubmit = async (e) => {
   e.preventDefault();
 
   if (item.href === '#contacto') {
-  setScrollToContact(true);
-  navigate('#inicio');
+  navigate('#inicio', { scrollTo: 'contacto' });
   return;
 }
 
@@ -3930,7 +3948,17 @@ const handleSubmit = async (e) => {
             <a 
               key={idx} 
               href={item.href} 
-              onClick={(e) => { e.preventDefault(); navigate(item.href); }}
+              onClick={(e) => {
+                e.preventDefault();
+
+                if (item.href === '#contacto') {
+                  setScrollToContact(true);
+                  navigate('#inicio');
+                  return;
+                }
+
+                navigate(item.href);
+              }}
               style={{ 
                 color: '#e2e8f0', 
                 textDecoration: 'none', 
