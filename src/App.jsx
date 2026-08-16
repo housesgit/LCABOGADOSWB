@@ -459,8 +459,7 @@ function PageNavbar({ scrolled, isMenuOpen, setIsMenuOpen, navigate, transitionP
                   e.preventDefault();
 
                   if (item.href === '#contacto') {
-                    setScrollToContact(true);
-                    navigate('#inicio');
+                    navigate('#inicio', { scrollTo: 'contacto' });
                     return;
                   }
 
@@ -2381,6 +2380,7 @@ function AdminPage() {
   const [password, setPassword] = useState('');
   const [caseItems, setCaseItems] = useState([]);
   const [articleItems, setArticleItems] = useState([]);
+  const [contactItems, setContactItems] = useState([]);
   const [editor, setEditor] = useState(null);
   const [editorType, setEditorType] = useState(null);
   const [adminNotice, setAdminNotice] = useState('');
@@ -2432,7 +2432,8 @@ function AdminPage() {
     const loadContent = async () => {
       const [
         { data: articlesData, error: articlesError },
-        { data: casesData, error: casesError }
+        { data: casesData, error: casesError },
+        { data: contactsData, error: contactsError }
       ] = await Promise.all([
         supabase
           .from('articles')
@@ -2442,7 +2443,12 @@ function AdminPage() {
         supabase
           .from('cases')
           .select('*')
-          .order('case_date', { ascending: false })
+          .order('case_date', { ascending: false }),
+
+        supabase
+          .from('contact_submissions')
+          .select('*')
+          .order('created_at', { ascending: false })
       ]);
 
       if (articlesError) {
@@ -2454,6 +2460,12 @@ function AdminPage() {
       if (casesError) {
         console.error('Error cargando casos:', casesError);
         setAdminNotice('No se pudieron cargar los casos desde Supabase.');
+        return;
+      }
+
+      if (contactsError) {
+        console.error('Error cargando consultas:', contactsError);
+        setAdminNotice('No se pudieron cargar las consultas desde Supabase.');
         return;
       }
 
@@ -2478,8 +2490,23 @@ function AdminPage() {
         published: item.status === 'published'
       }));
 
+      const mappedContacts = (contactsData || []).map((item) => ({
+        ...item,
+        displayDate: item.created_at
+          ? new Date(item.created_at).toLocaleString('es-ES', {
+              day: '2-digit',
+              month: '2-digit',
+              year: 'numeric',
+              hour: '2-digit',
+              minute: '2-digit'
+            })
+          : '',
+        status: item.status || 'new'
+      }));
+
       setArticleItems(mappedArticles);
       setCaseItems(mappedCases);
+      setContactItems(mappedContacts);
     };
 
     loadContent();
@@ -2929,7 +2956,11 @@ function AdminPage() {
             <div><span>Casos</span><strong>{caseItems.length}</strong><small>Gestionables</small></div>
             <div><span>Artículos</span><strong>{articleItems.length}</strong><small>Gestionables</small></div>
             <div><span>Publicados</span><strong>{caseItems.filter(x=>x.published).length + articleItems.filter(x=>x.published).length}</strong><small>Visibles en web</small></div>
-            <div><span>Consultas</span><strong>—</strong><small>Pendientes de conectar</small></div>
+            <div>
+              <span>Consultas</span>
+              <strong>{contactItems.filter(x => x.status === 'new').length}</strong>
+              <small>Nuevas</small>
+            </div>
           </div>
 
           <div className="admin-grid-two">
@@ -3008,15 +3039,79 @@ function AdminPage() {
           </div>
         </section>}
 
-        {section === 'contacts' && <section className="admin-panel">
+        {section === 'contacts' && <section className="admin-panel admin-list-panel">
           <div className="admin-panel-head">
-            <div><span className="admin-eyebrow">Entrada</span><h3>Consultas</h3></div>
+            <div>
+              <span className="admin-eyebrow">Entrada</span>
+              <h3>Consultas</h3>
+            </div>
+            <span className="admin-status published">
+              {contactItems.length} recibidas
+            </span>
           </div>
-          <div className="admin-empty">
-            <strong>Conexión pendiente</strong>
-            <p>La interfaz ya está preparada para mostrar las consultas recibidas desde Contacto. En la siguiente fase conectaremos el formulario a la base de datos y al correo de la firma.</p>
-            <button className="admin-secondary-btn" onClick={() => setSection('settings')}>Ver arquitectura</button>
-          </div>
+
+          {contactItems.length === 0 ? (
+            <div className="admin-empty">
+              <strong>No hay consultas todavía</strong>
+              <p>Las solicitudes enviadas desde el formulario de Contacto aparecerán aquí.</p>
+            </div>
+          ) : (
+            <div className="admin-table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Contacto</th>
+                    <th>Consulta</th>
+                    <th>Fecha</th>
+                    <th>Estado</th>
+                  </tr>
+                </thead>
+
+                <tbody>
+                  {contactItems.map(item => (
+                    <tr key={item.id}>
+                      <td>
+                        <strong>{item.name || 'Sin nombre'}</strong>
+                        <small>{item.email || 'Sin correo'}</small>
+                      </td>
+
+                      <td>
+                        <div style={{
+                          maxWidth: '420px',
+                          whiteSpace: 'normal',
+                          lineHeight: 1.5
+                        }}>
+                          {item.message || 'Sin mensaje'}
+                        </div>
+                      </td>
+
+                      <td>
+                        {item.displayDate}
+                      </td>
+
+                      <td>
+                        <span className={`admin-status ${
+                          item.status === 'new'
+                            ? 'draft'
+                            : 'published'
+                        }`}>
+                          {item.status === 'new'
+                            ? 'Nueva'
+                            : item.status === 'reviewing'
+                              ? 'En revisión'
+                              : item.status === 'answered'
+                                ? 'Respondida'
+                                : item.status === 'closed'
+                                  ? 'Cerrada'
+                                  : item.status}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </section>}
 
         {section === 'settings' && <section className="admin-panel">
@@ -3185,16 +3280,29 @@ const [scrollToContact, setScrollToContact] = useState(false);
         setTransitionPhase('idle');
 
         if (options.scrollTo) {
+          let attempts = 0;
+
+          const scrollWhenReady = () => {
+            const element = document.getElementById(options.scrollTo);
+
+            if (element) {
+              element.scrollIntoView({
+                behavior: 'smooth',
+                block: 'start'
+              });
+              return;
+            }
+
+            attempts += 1;
+
+            if (attempts < 30) {
+              setTimeout(scrollWhenReady, 100);
+            }
+          };
+
           requestAnimationFrame(() => {
             requestAnimationFrame(() => {
-              const element = document.getElementById(options.scrollTo);
-
-              if (element) {
-                element.scrollIntoView({
-                  behavior: 'smooth',
-                  block: 'start'
-                });
-              }
+              scrollWhenReady();
             });
           });
         }
@@ -3952,8 +4060,7 @@ const handleSubmit = async (e) => {
                 e.preventDefault();
 
                 if (item.href === '#contacto') {
-                  setScrollToContact(true);
-                  navigate('#inicio');
+                  navigate('#inicio', { scrollTo: 'contacto' });
                   return;
                 }
 
