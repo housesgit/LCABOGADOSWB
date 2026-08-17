@@ -1,8 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import logo from './logo.png';
 import { supabase } from './supabaseClient'
-import caseStudies from "./data/cases";
-import articles from "./data/articles";
 import AdminPage from './components/AdminPage';
 import AreasPage from './components/AreasPage';
 import AreaDetailPage from './components/AreaDetailPage';
@@ -20,6 +18,7 @@ import HomeArticles from './components/HomeArticles';
 import HomeContact from './components/HomeContact';
 import HomeFloatingWhatsapp from './components/HomeFloatingWhatsapp';
 import { RouteTransitionStyles, RouteTransition } from './components/RouteTransition';
+import usePublicContent from './hooks/usePublicContent';
 
 const submitContactForm = async ({ name, email, message }) => {
   const { data, error } = await supabase
@@ -45,8 +44,7 @@ const submitContactForm = async ({ name, email, message }) => {
 export default function App() {
   const [enviado, setEnviado] = useState(false);
 const [enviando, setEnviando] = useState(false);
-const [publicCaseStudies, setPublicCaseStudies] = useState(caseStudies);
-const [publicArticles, setPublicArticles] = useState(articles);
+const { publicCaseStudies, publicArticles } = usePublicContent();
 const [errorEnvio, setErrorEnvio] = useState('');
 const [scrollToContact, setScrollToContact] = useState(false);
   const [scrolled, setScrolled] = useState(false);
@@ -167,87 +165,6 @@ const [scrollToContact, setScrollToContact] = useState(false);
     }, 35);
   }, 475);
 };
-
-useEffect(() => {
-  let mounted = true;
-
-  const loadPublicCases = async () => {
-    const { data, error } = await supabase
-      .from('cases')
-      .select('*')
-      .eq('status', 'published')
-      .order('case_date', { ascending: false });
-
-    if (error) {
-      console.error('Error cargando casos públicos:', error);
-      return;
-    }
-
-    if (!mounted) return;
-
-    const mappedCases = (data || []).map((item) => ({
-      ...item,
-      date: item.case_date || '',
-      displayDate: item.case_date
-        ? new Date(`${item.case_date}T00:00:00`).toLocaleDateString('es-ES', {
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric'
-          })
-        : '',
-      published: item.status === 'published'
-    }));
-
-    setPublicCaseStudies(mappedCases);
-  };
-
-  loadPublicCases();
-
-  return () => {
-    mounted = false;
-  };
-}, []);
-
-useEffect(() => {
-  let mounted = true;
-
-  const loadPublicArticles = async () => {
-    const { data, error } = await supabase
-      .from('articles')
-      .select('*')
-      .eq('status', 'published')
-      .order('article_date', { ascending: false });
-
-    if (error) {
-      console.error('Error cargando artículos públicos:', error);
-      return;
-    }
-
-    if (!mounted) return;
-
-    const mappedArticles = (data || []).map((item) => ({
-  ...item,
-  date: item.article_date || '',
-  displayDate: item.article_date
-    ? new Date(`${item.article_date}T00:00:00`).toLocaleDateString('es-ES', {
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric'
-      })
-    : '',
-  published: item.status === 'published',
-  body: item.body || ''
-}));
-
-    setPublicArticles(mappedArticles);
-  };
-
-  loadPublicArticles();
-
-  return () => {
-    mounted = false;
-  };
-}, []);
 
 const handleSubmit = async (e) => {
   e.preventDefault();
