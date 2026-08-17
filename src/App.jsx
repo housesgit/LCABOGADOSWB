@@ -1,15 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import logo from './logo.png';
 import { supabase } from './supabaseClient'
-import AdminPage from './components/AdminPage';
-import AreasPage from './components/AreasPage';
-import AreaDetailPage from './components/AreaDetailPage';
-import FirmPage from './components/FirmPage';
-import CasesPage from './components/CasesPage';
-import CaseDetailPage from './components/CaseDetailPage';
-import ArticlesPage from './components/ArticlesPage';
-import ArticleDetailPage from './components/ArticleDetailPage';
-import PageNavbar from './components/PageNavbar';
 import HomeHero from './components/HomeHero';
 import HomeAreas from './components/HomeAreas';
 import HomeTeam from './components/HomeTeam';
@@ -18,6 +9,7 @@ import HomeArticles from './components/HomeArticles';
 import HomeContact from './components/HomeContact';
 import HomeFloatingWhatsapp from './components/HomeFloatingWhatsapp';
 import useNavigation from './hooks/useNavigation';
+import AppRouter from './components/AppRouter';
 import { RouteTransitionStyles, RouteTransition } from './components/RouteTransition';
 import usePublicContent from './hooks/usePublicContent';
 
@@ -178,89 +170,19 @@ const handleSubmit = async (e) => {
     }
   ];
 
-  if (route === '#admin') {
-    return <AdminPage />;
-  }
-
-  if (route === '#areas' || route.startsWith('#areas?')) {
-    return (
-      <>
-        <PageNavbar scrolled={scrolled} isMenuOpen={isMenuOpen} setIsMenuOpen={setIsMenuOpen} navigate={navigate} transitionPhase={transitionPhase} setScrollToContact={setScrollToContact} />
-        <AreasPage onBack={() => navigate('#inicio')} onNavigate={navigate} />
-      </>
-    );
-  }
-
-  if (route.startsWith('#area/')) {
-    const areaName = decodeURIComponent(route.slice('#area/'.length));
-    return (
-      <>
-        <PageNavbar scrolled={scrolled} isMenuOpen={isMenuOpen} setIsMenuOpen={setIsMenuOpen} navigate={navigate} transitionPhase={transitionPhase} setScrollToContact={setScrollToContact} />
-        <AreaDetailPage area={areaName} onNavigate={navigate} />
-      </>
-    );
-  }
-
-  if (route === '#firma') {
-    return (
-      <>
-        <PageNavbar scrolled={scrolled} isMenuOpen={isMenuOpen} setIsMenuOpen={setIsMenuOpen} navigate={navigate} transitionPhase={transitionPhase} setScrollToContact={setScrollToContact} />
-        <FirmPage onBack={() => navigate('#inicio')} onNavigate={navigate} />
-      </>
-    );
-  }
-
-  if (route === '#casos') {
-    return (
-      <>
-        <PageNavbar scrolled={scrolled} isMenuOpen={isMenuOpen} setIsMenuOpen={setIsMenuOpen} navigate={navigate} transitionPhase={transitionPhase} setScrollToContact={setScrollToContact} />
-        <CasesPage
-  onBack={() => navigate('#inicio')}
-  onNavigate={navigate}
-  cases={publicCaseStudies}
-/>
-      </>
-    );
-  }
-
-  if (route.startsWith('#caso/')) {
-    const id = decodeURIComponent(route.slice('#caso/'.length));
-    const caso = publicCaseStudies.find((item) => item.id === id);
-    return (
-      <>
-        <PageNavbar scrolled={scrolled} isMenuOpen={isMenuOpen} setIsMenuOpen={setIsMenuOpen} navigate={navigate} transitionPhase={transitionPhase} setScrollToContact={setScrollToContact} />
-        <CaseDetailPage
-  caso={caso}
-  onNavigate={navigate}
-  cases={publicCaseStudies}
-/>
-      </>
-    );
-  }
-
-  if (route === '#articulos') {
-    return (
-      <>
-        <PageNavbar scrolled={scrolled} isMenuOpen={isMenuOpen} setIsMenuOpen={setIsMenuOpen} navigate={navigate} transitionPhase={transitionPhase} setScrollToContact={setScrollToContact} />
-        <ArticlesPage
-  onBack={() => navigate('#inicio')}
-  onNavigate={navigate}
-  articles={publicArticles}
-/>
-      </>
-    );
-  }
-
-  if (route.startsWith('#articulo/')) {
-    const id = decodeURIComponent(route.slice('#articulo/'.length));
-    const article = publicArticles.find((item) => item.id === id);
-    return (
-      <>
-        <PageNavbar scrolled={scrolled} isMenuOpen={isMenuOpen} setIsMenuOpen={setIsMenuOpen} navigate={navigate} transitionPhase={transitionPhase} setScrollToContact={setScrollToContact} />
-        <ArticleDetailPage article={article} onNavigate={navigate} />
-      </>
-    );
-  }
+  return (
+    <AppRouter
+      route={route}
+      scrolled={scrolled}
+      isMenuOpen={isMenuOpen}
+      setIsMenuOpen={setIsMenuOpen}
+      navigate={navigate}
+      transitionPhase={transitionPhase}
+      setScrollToContact={setScrollToContact}
+      publicCaseStudies={publicCaseStudies}
+      publicArticles={publicArticles}
+    />
+  );
 
   return (
     <div style={{ 
