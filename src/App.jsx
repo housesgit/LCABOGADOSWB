@@ -21,6 +21,8 @@ import CaseDetailPage from './components/CaseDetailPage';
 import ArticlesPage from './components/ArticlesPage';
 import ArticleDetailPage from './components/ArticleDetailPage';
 import PageNavbar from './components/PageNavbar';
+import HomeFloatingWhatsapp from './components/HomeFloatingWhatsapp';
+import { RouteTransitionStyles, RouteTransition } from './components/RouteTransition';
 
 const WHATSAPP_URL = "https://wa.me/573113361929?text=";
 const whatsappGeneral = `${WHATSAPP_URL}${encodeURIComponent("Hola, me gustaría solicitar asesoría jurídica.")}`;
@@ -611,107 +613,6 @@ const handleSubmit = async (e) => {
           transform-origin: top right;
         }
 
-        /* --- BOTÓN FLOTANTE DE WHATSAPP (Escritorio cuando scrolled) --- */
-        .floating-whatsapp-container {
-          position: fixed;
-          bottom: 30px;
-          right: 30px;
-          z-index: 9999;
-          display: flex;
-          align-items: center;
-          justify-content: flex-end;
-          animation: floatBtnAppear 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-        }
-
-        /* --- BOTÓN FLOTANTE DE WHATSAPP (Móvil cuando scrolled) --- */
-        .floating-whatsapp-mobile {
-          display: none;
-          position: fixed;
-          bottom: 20px;
-          right: 20px;
-          z-index: 9999;
-          align-items: center;
-          justify-content: flex-end;
-          animation: floatBtnAppear 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-        }
-
-        @keyframes floatBtnAppear {
-          0% { opacity: 0; transform: translateY(20px) scale(0.8); }
-          100% { opacity: 1; transform: translateY(0) scale(1); }
-        }
-
-        .Btn {
-          display: flex;
-          align-items: center;
-          justify-content: flex-start;
-          width: 45px;
-          height: 45px;
-          border: none;
-          border-radius: 50%;
-          cursor: pointer;
-          position: relative;
-          overflow: hidden;
-          transition-duration: 0.3s;
-          box-shadow: 2px 2px 10px rgba(0, 0, 0, 0.3);
-          background-color: #00d757;
-          text-decoration: none;
-        }
-
-        .sign {
-          width: 45px;
-          height: 45px;
-          min-width: 45px;
-          transition-duration: 0.3s;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          flex-shrink: 0;
-        }
-
-        .sign svg {
-          width: 25px;
-          height: 25px;
-        }
-
-        .sign svg path {
-          fill: white;
-        }
-
-        .text {
-          position: absolute;
-          left: 45px;
-          width: 0px;
-          opacity: 0;
-          color: white;
-          font-size: 1.1em;
-          font-weight: 600;
-          transition-duration: 0.3s;
-          white-space: nowrap;
-          font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-          overflow: hidden;
-          text-align: left;
-        }
-
-        .Btn:hover {
-          width: 160px;
-          border-radius: 40px;
-          transition-duration: 0.3s;
-        }
-
-        .Btn:hover .sign {
-          transition-duration: 0.3s;
-        }
-
-        .Btn:hover .text {
-          opacity: 1;
-          width: 100px;
-          transition-duration: 0.3s;
-        }
-
-        .Btn:active {
-          transform: translate(2px, 2px);
-        }
-
         /* --- CLASES DE ADAPTACIÓN MÓVIL --- */
         .hide-on-mobile { display: flex; }
         .show-on-mobile { display: none !important; }
@@ -725,14 +626,6 @@ const handleSubmit = async (e) => {
             justify-content: center !important;
             align-items: center !important;
             margin-left: 0 !important;
-          }
-
-          .floating-whatsapp-container {
-            display: none !important;
-          }
-
-          .floating-whatsapp-mobile {
-            display: flex !important;
           }
 
           .mobile-header-scrolled {
@@ -812,45 +705,7 @@ const handleSubmit = async (e) => {
         }
       `}</style>
 
-      {/* Botón flotante animado de WhatsApp (Escritorio) */}
-      {scrolled && (
-        <div className="floating-whatsapp-container">
-          <a 
-            href="https://wa.me/573113361929?text=Hola,%20me%20gustaría%20solicitar%20asesoría%20jurídica." 
-            target="_blank" 
-            rel="noopener noreferrer" 
-            className="Btn"
-            aria-label="Escríbenos por WhatsApp"
-          >
-            <div className="sign">
-              <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
-              </svg>
-            </div>
-            <span className="text">WhatsApp</span>
-          </a>
-        </div>
-      )}
-
-      {/* Botón flotante animado de WhatsApp (Móvil) */}
-      {scrolled && (
-        <div className="floating-whatsapp-mobile">
-          <a 
-            href="https://wa.me/573113361929?text=Hola,%20me%20gustaría%20solicitar%20asesoría%20jurídica." 
-            target="_blank" 
-            rel="noopener noreferrer" 
-            className="Btn"
-            aria-label="Escríbenos por WhatsApp"
-          >
-            <div className="sign">
-              <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
-              </svg>
-            </div>
-            <span className="text">WhatsApp</span>
-          </a>
-        </div>
-      )}
+      <HomeFloatingWhatsapp scrolled={scrolled} />
 
       {/* Navbar */}
       <header className={`mobile-header-base ${scrolled ? 'mobile-header-scrolled' : ''}`} style={{ 
