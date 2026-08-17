@@ -13,26 +13,6 @@ import AppRouter from './components/AppRouter';
 import { RouteTransitionStyles, RouteTransition } from './components/RouteTransition';
 import usePublicContent from './hooks/usePublicContent';
 
-const submitContactForm = async ({ name, email, message }) => {
-  const { data, error } = await supabase
-    .from('contact_submissions')
-    .insert({
-      name: name.trim(),
-      email: email.trim(),
-      message: message.trim()
-    })
-    .select()
-    .single();
-
-  if (error) {
-    console.error('Error enviando consulta:', error);
-    throw error;
-  }
-
-  return data;
-};
-
-
 
 export default function App() {
   const [enviado, setEnviado] = useState(false);
