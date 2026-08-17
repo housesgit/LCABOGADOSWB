@@ -1,22 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
 import logo from './logo.png';
-import heroBg from './imagendefondo1.jpg';
-import socio1 from './LACOUTURE.jpg';
-import socio2 from './CORONADO.jpg';
 import { supabase } from './supabaseClient'
-import RichTextEditor from './components/RichTextEditor';
-import ArticleEditor from './components/ArticleEditor';
-import { areasList, areaDetails } from "./data/areas";
 import caseStudies from "./data/cases";
 import articles from "./data/articles";
 import AdminPage from './components/AdminPage';
-import PageShell from './components/PageShell';
-import FilterPanel from './components/FilterPanel';
 import AreasPage from './components/AreasPage';
 import AreaDetailPage from './components/AreaDetailPage';
 import FirmPage from './components/FirmPage';
 import CasesPage from './components/CasesPage';
-import pageStyles from './styles/pageStyles';
 import CaseDetailPage from './components/CaseDetailPage';
 import ArticlesPage from './components/ArticlesPage';
 import ArticleDetailPage from './components/ArticleDetailPage';
@@ -30,8 +21,6 @@ import HomeContact from './components/HomeContact';
 import HomeFloatingWhatsapp from './components/HomeFloatingWhatsapp';
 import { RouteTransitionStyles, RouteTransition } from './components/RouteTransition';
 
-const WHATSAPP_URL = "https://wa.me/573113361929?text=";
-const whatsappGeneral = `${WHATSAPP_URL}${encodeURIComponent("Hola, me gustaría solicitar asesoría jurídica.")}`;
 const submitContactForm = async ({ name, email, message }) => {
   const { data, error } = await supabase
     .from('contact_submissions')
@@ -559,49 +548,6 @@ const handleSubmit = async (e) => {
           100% { opacity: 1; transform: translateY(0) scale(1); }
         }
 
-        .whatsapp-btn-wrapper {
-          position: relative;
-          display: inline-flex;
-          align-items: center;
-          justify-content: center;
-          overflow: hidden;
-        }
-
-        .whatsapp-inner {
-          position: relative;
-          width: 100%;
-          height: 100%;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-        }
-
-        .whatsapp-text {
-          display: inline-block;
-          transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease;
-        }
-
-        .whatsapp-icon-container {
-          position: absolute;
-          top: 50%;
-          left: 50%;
-          transform: translate(-50%, calc(-50% + 25px)) scale(0.5);
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          opacity: 0;
-          transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease;
-        }
-
-        .whatsapp-btn-wrapper:hover .whatsapp-text {
-          transform: translateY(-25px);
-          opacity: 0;
-        }
-
-        .whatsapp-btn-wrapper:hover .whatsapp-icon-container {
-          transform: translate(-50%, -50%) scale(1);
-          opacity: 1;
-        }
 
         @keyframes mobileMenuSmoothIn {
           0% {
@@ -706,7 +652,6 @@ const handleSubmit = async (e) => {
           }
 
           .dedicated-card-grid button { width: 100%; }
-          #casos-preview .container-padding-mobile > button { width: 100%; }
           .marquee-track > button { -webkit-appearance: none; }
         }
       `}</style>
