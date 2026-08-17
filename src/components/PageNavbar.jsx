@@ -3,7 +3,7 @@ import logo from '../logo.png';
 import DedicatedWhatsappButton from './DedicatedWhatsappButton';
 import { RouteTransitionStyles, RouteTransition, dedicatedNavItems } from './RouteTransition';
 
-function PageNavbar({ scrolled, isMenuOpen, setIsMenuOpen, navigate, transitionPhase, setScrollToContact }) {
+function PageNavbar({ scrolled, isMenuOpen, setIsMenuOpen, navigate, transitionPhase }) {
   return (
     <>
       <header className={`dedicated-navbar ${scrolled ? 'dedicated-navbar-scrolled' : ''}`}>

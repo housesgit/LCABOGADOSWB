@@ -17,7 +17,6 @@ export default function AppRouter({
   setIsMenuOpen,
   navigate,
   transitionPhase,
-  setScrollToContact,
   publicCaseStudies,
   publicArticles
 }) {
@@ -28,7 +27,6 @@ export default function AppRouter({
       setIsMenuOpen={setIsMenuOpen}
       navigate={navigate}
       transitionPhase={transitionPhase}
-      setScrollToContact={setScrollToContact}
     />
   );
 

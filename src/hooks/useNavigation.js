@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 
 export default function useNavigation() {
-  const [scrollToContact, setScrollToContact] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
@@ -136,8 +135,6 @@ export default function useNavigation() {
     navigate,
     transitionPhase,
     transitionTimerRef,
-    scrollToContact,
-    setScrollToContact,
     scrolled,
     isMenuOpen,
     setIsMenuOpen

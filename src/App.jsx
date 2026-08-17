@@ -16,7 +16,6 @@ const {
   route,
   navigate,
   transitionPhase,
-  setScrollToContact,
   scrolled,
   isMenuOpen,
   setIsMenuOpen
@@ -69,7 +68,6 @@ const handleSubmit = async (e) => {
       setIsMenuOpen={setIsMenuOpen}
       navigate={navigate}
       transitionPhase={transitionPhase}
-      setScrollToContact={setScrollToContact}
       publicCaseStudies={publicCaseStudies}
       publicArticles={publicArticles}
     />
