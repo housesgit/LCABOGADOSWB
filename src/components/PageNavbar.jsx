@@ -480,9 +480,10 @@ function PageNavbar({ scrolled, isMenuOpen, setIsMenuOpen, navigate, transitionP
             animation-duration: 52s !important;
           }
 
-          .marquee-track > div {
+          .marquee-track > button {
             width: min(84vw, 320px) !important;
             min-width: min(84vw, 320px) !important;
+            flex: 0 0 min(84vw, 320px) !important;
             padding: 28px 24px !important;
           }
 
@@ -1021,6 +1022,36 @@ function PageNavbar({ scrolled, isMenuOpen, setIsMenuOpen, navigate, transitionP
         .dedicated-mobile-menu { position: fixed; top: 66px; right: 16px; width: 210px; background: rgba(10,15,25,.97); backdrop-filter: blur(16px); border: 1px solid rgba(255,255,255,.08); border-radius: 12px; padding: 8px 0; box-shadow: 0 20px 40px rgba(0,0,0,.7); }
         .dedicated-mobile-menu a { display: block; color: #e2e8f0; text-decoration: none; font: 400 .82rem/1 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; letter-spacing: .12em; padding: 13px 20px; }
         .dedicated-mobile-menu a:hover { background: rgba(255,255,255,.05); color: #fff; }
+        /* =========================================================
+           ÁREAS DE PRÁCTICA — CINTA HORIZONTAL
+           ========================================================= */
+        .marquee-track {
+          display: flex;
+          flex-direction: row;
+          align-items: stretch;
+          width: max-content;
+          min-width: 100%;
+          animation: marqueeAreas 48s linear infinite;
+          will-change: transform;
+        }
+
+        .marquee-track:hover {
+          animation-play-state: paused;
+        }
+
+        .marquee-track > button {
+          flex: 0 0 340px;
+        }
+
+        @keyframes marqueeAreas {
+          from {
+            transform: translateX(0);
+          }
+          to {
+            transform: translateX(calc(-50% - 12px));
+          }
+        }
+
         @media (max-width: 768px) {
           /* =====================================================
              CASOS DE ESTUDIO — SOLO MÓVIL

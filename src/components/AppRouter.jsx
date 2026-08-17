@@ -9,6 +9,12 @@ import CaseDetailPage from './CaseDetailPage';
 import ArticlesPage from './ArticlesPage';
 import ArticleDetailPage from './ArticleDetailPage';
 import PageNavbar from './PageNavbar';
+import HomeHero from './HomeHero';
+import HomeAreas from './HomeAreas';
+import HomeTeam from './HomeTeam';
+import HomeCases from './HomeCases';
+import HomeArticles from './HomeArticles';
+import HomeContact from './HomeContact';
 
 export default function AppRouter({
   route,
@@ -29,6 +35,28 @@ export default function AppRouter({
       transitionPhase={transitionPhase}
     />
   );
+
+  if (route === '#inicio') {
+    return (
+      <>
+        {navbar}
+        <HomeHero navigate={navigate} />
+        <HomeAreas navigate={navigate} />
+        <HomeTeam />
+        <HomeCases
+          navigate={navigate}
+          cases={publicCaseStudies}
+        />
+        <HomeArticles navigate={navigate} />
+        <HomeContact
+          handleSubmit={() => {}}
+          enviado={false}
+          errorEnvio=""
+          enviando={false}
+        />
+      </>
+    );
+  }
 
   if (route === '#admin') {
     return <AdminPage />;
